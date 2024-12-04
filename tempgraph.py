@@ -45,7 +45,7 @@ plt.text(0.2, 0.85, f'{current_temp:.1f}°',
          fontfamily='Arial',
          color='cyan',
          ha='center',  
-         va='center') 
+         va='center')    
 
 plt.tight_layout()
 plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
