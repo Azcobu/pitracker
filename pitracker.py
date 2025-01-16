@@ -1,89 +1,184 @@
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.clock import Clock
+import time
+import csv
+from datetime import datetime, timedelta
+import threading
+import pygame
+import serial
 import matplotlib.pyplot as plt
-from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
+import matplotlib.dates as mdates
+import matplotlib.colors as mcolors
+import numpy as np
+import pandas as pd
 
-# Placeholder for Matplotlib graph
-def generate_placeholder_graph():
-    plt.figure(figsize=(5, 3))
-    plt.plot([0, 1, 2, 3], [0, 1, 4, 9], label='Placeholder')
-    plt.title('Daily Temperature Graph')
-    plt.legend()
-    return plt.gcf()
+SERIAL_PORT = '/dev/ttyACM0'  
+BAUD_RATE = 9600
 
-class MainPage(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
-        
-        layout.add_widget(Label(text="Select Graph Type", font_size=24))
-        
-        daily_button = Button(text="Daily Temperatures", font_size=20, size_hint=(1, 0.2))
-        daily_button.bind(on_press=self.open_daily_temp)
-        layout.add_widget(daily_button)
-        
-        for title in ["Weekly Temperatures", "Yearly Temperatures", "Stock Market Info"]:
-            btn = Button(text=title, font_size=20, size_hint=(1, 0.2))
-            btn.bind(on_press=self.placeholder_page)
-            layout.add_widget(btn)
-        
-        self.add_widget(layout)
-    
-    def open_daily_temp(self, instance):
-        self.manager.current = "daily_temp"
-    
-    def placeholder_page(self, instance):
-        self.manager.current = "placeholder"
+CSV_FILE = "temperature_log.csv"
+DISPLAY_WIDTH = 800
+DISPLAY_HEIGHT = 480
+BACKGROUND_COLOR = (0, 0, 0)
+TEXT_COLOR = (255, 255, 255)
+UPDATE_INTERVAL = 5
+CSV_WRITE_INTERVAL = 3600  
+HOURS_TO_KEEP = 24
 
-class DailyTempPage(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
-        
-        self.graph_widget = FigureCanvasKivyAgg(generate_placeholder_graph())
-        self.layout.add_widget(self.graph_widget)
-        
-        back_button = Button(text="Back to Main", font_size=20, size_hint=(1, 0.2))
-        back_button.bind(on_press=self.go_back)
-        self.layout.add_widget(back_button)
-        
-        self.add_widget(self.layout)
-        Clock.schedule_interval(self.update_graph, 60)  # Update every minute
-    
-    def go_back(self, instance):
-        self.manager.current = "main"
-    
-    def update_graph(self, dt):
-        self.layout.remove_widget(self.graph_widget)
-        self.graph_widget = FigureCanvasKivyAgg(generate_placeholder_graph())
-        self.layout.add_widget(self.graph_widget, index=0)
 
-class PlaceholderPage(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
-        
-        layout.add_widget(Label(text="Placeholder Page", font_size=24))
-        back_button = Button(text="Back to Main", font_size=20, size_hint=(1, 0.2))
-        back_button.bind(on_press=self.go_back)
-        layout.add_widget(back_button)
-        
-        self.add_widget(layout)
-    
-    def go_back(self, instance):
-        self.manager.current = "main"
+pygame.init()
+screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+pygame.display.set_caption("Temperature Display")
+font = pygame.font.SysFont(None, 48)
 
-class MyApp(App):
-    def build(self):
-        sm = ScreenManager()
-        sm.add_widget(MainPage(name="main"))
-        sm.add_widget(DailyTempPage(name="daily_temp"))
-        sm.add_widget(PlaceholderPage(name="placeholder"))
-        return sm
+# In-memory buffer for temperature readings
+temp_buffer = []
+
+ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+
+def read_sensor():
+    """Reads the current data from the sensor via the serial connection."""
+    with serial.Serial(PORT, BAUD_RATE, timeout=1) as ser:
+    
+        # Read a line from the serial port
+        line = ser.readline().decode('utf-8').strip()
+        if line:
+            try:
+                sernum, temp, humid, touch = line.split(',')
+                return float(temp), float(humid), float(touch)
+            except Exception as err:
+                print(err)
+                return None
+            
+def write_csv_from_buffer():
+    """Writes buffered temperatures to the CSV file and prunes old data."""
+    global temp_buffer
+
+    # Write buffered data to CSV
+    with open(CSV_FILE, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(temp_buffer)
+
+    # Clear the buffer
+    temp_buffer = []
+
+    # Prune entries older than 24 hours
+    prune_csv()
+
+def prune_csv():
+    """Keeps only the last 24 hours of data in the CSV file."""
+    cutoff = datetime.now() - timedelta(hours=HOURS_TO_KEEP)
+    rows = []
+
+    with open(CSV_FILE, "r") as file:
+        reader = csv.reader(file)
+        rows = [row for row in reader if datetime.fromisoformat(row[0]) > cutoff]
+
+    with open(CSV_FILE, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(rows)
+
+def display_temperature(current_temp, graph_path):
+    """Updates the Pygame display with the current temperature and graph."""
+    screen.fill(BACKGROUND_COLOR)
+
+    # Display current temperature
+    temp_text = font.render(f"Current Temperature: {current_temp:.2f} C", True, TEXT_COLOR)
+    screen.blit(temp_text, (20, 20))
+
+    # Display graph
+    graph_image = pygame.image.load(graph_path)
+    graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2 + 40))
+    screen.blit(graph_image, graph_rect)
+
+    pygame.display.flip()
+
+def generate_graph():
+    """Generates a graph from the last 24 hours of temperature data."""
+    timestamps, temperatures = [], []
+
+    with open(CSV_FILE, "r") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            timestamps.append(datetime.fromisoformat(row[0]))
+            temperatures.append(float(row[1]))
+
+    df = pd.read_csv('testdata.csv', parse_dates=['timestamp'])
+
+    plt.figure(figsize=(10, 6), dpi=80)
+    plt.style.use('dark_background')
+
+    # Define the updated temperature range and colors
+    temperature_range = [0, 15, 25, 30, 40, 45]  
+    colors = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+
+    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colors)
+    norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
+    timestamps = mdates.date2num(df['timestamp'])  # Convert timestamps to numeric format
+    temperatures = df['temperature'].to_numpy()  # Get temperatures as a numpy array
+    X, Y = np.meshgrid(timestamps, np.linspace(0, 45, 500))  # Extend range to 45 for gradient
+    Z = norm(Y)  # Normalize the vertical gradient
+    gradient_colors = cmap(Z)  # Map normalized values to colors
+    mask = Y > np.interp(X[0], timestamps, temperatures)  # Mask above the curve
+    gradient_colors[mask] = (0, 0, 0, 0)  # Make masked areas transparent
+
+    plt.imshow(gradient_colors, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
+
+    plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
+
+    plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
+    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(5)) 
+
+    plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
+
+    plt.gca().set_xlabel('')
+    plt.gca().set_ylabel('')
+    plt.gca().set_title('')
+
+    current_temp = df['temperature'].iloc[-1]
+    plt.text(0.2, 0.85, f'{current_temp:.1f}°',  
+            transform=plt.gca().transAxes, 
+            fontsize=80,  
+            fontweight='bold', 
+            fontfamily='Arial',
+            color='cyan',
+            ha='center',  
+            va='center')    
+
+    plt.tight_layout()
+    plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
+    plt.close()
+
+def main():
+    threading.Thread(target=csv_writer_thread, daemon=True).start()
+
+    graph_path = "temperature_graph.png"
+    last_graph_update = time.time()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+
+        # Read current temperature
+        current_temp, current_humid, current_touch = read_sensor()
+        if current_temp is not None:
+            # Buffer the current temperature with a timestamp
+            temp_buffer.append([datetime.now().isoformat(), current_temp])
+
+        # Generate graph every 5 minutes
+        if time.time() - last_graph_update > CSV_WRITE_INTERVAL:
+            generate_graph()
+            last_graph_update = time.time()
+
+        # Display updates
+        display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
+        time.sleep(UPDATE_INTERVAL)
+
+def csv_writer_thread():
+    while True:
+        # Write buffered data to CSV every hour
+        write_csv_from_buffer()
+        time.sleep(CSV_WRITE_INTERVAL)
 
 if __name__ == "__main__":
-    MyApp().run()
+    main()
