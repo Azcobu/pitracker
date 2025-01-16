@@ -26,7 +26,7 @@ HOURS_TO_KEEP = 24
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 pygame.display.set_caption("Temperature Display")
-font = pygame.font.SysFont(None, 48)
+font = pygame.font.SysFont(None, 96)
 
 # In-memory buffer for temperature readings
 temp_buffer = []
@@ -35,7 +35,7 @@ ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
 
 def read_sensor():
     """Reads the current data from the sensor via the serial connection."""
-    with serial.Serial(PORT, BAUD_RATE, timeout=1) as ser:
+    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
     
         # Read a line from the serial port
         line = ser.readline().decode('utf-8').strip()
@@ -80,7 +80,7 @@ def display_temperature(current_temp, graph_path):
     screen.fill(BACKGROUND_COLOR)
 
     # Display current temperature
-    temp_text = font.render(f"Current Temperature: {current_temp:.2f} C", True, TEXT_COLOR)
+    temp_text = font.render(f"{current_temp:.2f} °C", True, TEXT_COLOR)
     screen.blit(temp_text, (20, 20))
 
     # Display graph
@@ -94,13 +94,15 @@ def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
     timestamps, temperatures = [], []
 
+    '''
     with open(CSV_FILE, "r") as file:
         reader = csv.reader(file)
         for row in reader:
             timestamps.append(datetime.fromisoformat(row[0]))
             temperatures.append(float(row[1]))
+    '''
 
-    df = pd.read_csv('testdata.csv', parse_dates=['timestamp'])
+    df = pd.read_csv(CSV_FILE, parse_dates=['timestamp'])
 
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
