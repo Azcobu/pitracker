@@ -99,6 +99,35 @@ def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
     timestamps, temperatures = [], []
 
+    # Read data from CSV
+    with open(CSV_FILE, "r") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            timestamps.append(datetime.fromisoformat(row[0]))
+            temperatures.append(float(row[1]))
+
+    # Add data from the in-memory buffer
+    for timestamp, temp in temp_buffer:
+        timestamps.append(datetime.fromisoformat(timestamp))
+        temperatures.append(temp)
+
+    # Sort the data by timestamp
+    combined_data = sorted(zip(timestamps, temperatures), key=lambda x: x[0])
+    timestamps, temperatures = zip(*combined_data)
+
+    # Generate the graph
+    plt.figure(figsize=(10, 5))
+    plt.plot(timestamps, temperatures, marker="o")
+    plt.title("Temperature (Last 24 Hours)")
+    plt.xlabel("Time")
+    plt.ylabel("Temperature (C)")
+    plt.grid()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig("temperature_graph.png")
+    plt.close()
+
+
     '''
     with open(CSV_FILE, "r") as file:
         reader = csv.reader(file)
@@ -107,6 +136,7 @@ def generate_graph():
             temperatures.append(float(row[1]))
     '''
 
+    '''
     df = pd.read_csv(CSV_FILE, parse_dates=['timestamp'])
 
     plt.figure(figsize=(10, 6), dpi=80)
@@ -153,6 +183,7 @@ def generate_graph():
     plt.tight_layout()
     plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
     plt.close()
+    '''
 
 def main():
     threading.Thread(target=csv_writer_thread, daemon=True).start()
