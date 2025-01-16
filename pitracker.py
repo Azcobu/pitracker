@@ -1,5 +1,6 @@
 import time
 import csv
+import os
 from datetime import datetime, timedelta
 import threading
 import pygame
@@ -84,9 +85,13 @@ def display_temperature(current_temp, graph_path):
     screen.blit(temp_text, (20, 20))
 
     # Display graph
-    graph_image = pygame.image.load(graph_path)
-    graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2 + 40))
-    screen.blit(graph_image, graph_rect)
+    if os.path.exists(graph_path):
+        graph_image = pygame.image.load(graph_path)
+        graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2 + 40))
+        screen.blit(graph_image, graph_rect)
+    else:
+        placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
+        screen.blit(placeholder_text, (DISPLAY_WIDTH // 2 - 100, DISPLAY_HEIGHT // 2))
 
     pygame.display.flip()
 
