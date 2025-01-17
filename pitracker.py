@@ -20,8 +20,8 @@ DISPLAY_HEIGHT = 480
 BACKGROUND_COLOR = (0, 0, 0)
 TEXT_COLOR = (255, 255, 255)
 UPDATE_INTERVAL = 5
-GRAPH_UPDATE_INTERVAL = 300
-CSV_WRITE_INTERVAL = 3600  
+GRAPH_UPDATE_INTERVAL = 60
+CSV_WRITE_INTERVAL = 300  
 HOURS_TO_KEEP = 24
 
 pygame.init()
@@ -181,7 +181,8 @@ def main():
 
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
-        if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:  
+        if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:
+            print('Generating new graph...')
             if current_temp is not None:
                 temp_buffer.append([datetime.now().isoformat(), current_temp])
             generate_graph()
