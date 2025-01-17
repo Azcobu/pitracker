@@ -112,14 +112,10 @@ def generate_graph():
     combined_data = sorted(zip(timestamps, temperatures), key=lambda x: x[0])
     timestamps, temperatures = zip(*combined_data)
 
- 
-    #df = pd.read_csv(CSV_FILE, parse_dates=['timestamp'])
-
-    df = pd.DataFrame()
-    df['timestamp'] = timestamps
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df.set_index('timestamp', inplace=True)
-    df['temperature'] = temperatures
+    df = pd.DataFrame({
+        'timestamp': timestamps,
+        'temperature': temperatures
+    })
 
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
@@ -141,7 +137,6 @@ def generate_graph():
     plt.imshow(gradient_colors, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
 
     plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
-    #plt.plot(timestamps, temperatures, color='white', linewidth=2)
 
     plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
@@ -167,7 +162,6 @@ def generate_graph():
     plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
     plt.close()
 
-
 def main():
     pygame.mouse.set_visible(False)
     threading.Thread(target=csv_writer_thread, daemon=True).start()
@@ -187,7 +181,7 @@ def main():
             current_temp, current_humid, current_touch = sensor_return
         else:
             current_temp, current_humid, current_touch = None, None, None
-            
+
         if current_temp is not None:
             # Buffer the current temperature with a timestamp
             temp_buffer.append([datetime.now().isoformat(), current_temp])
