@@ -168,14 +168,13 @@ def main():
                 return
 
         now_timestamp = int(time.time())
+        current_temp, current_humid, current_touch = None, None, None
 
         if datetime.now().second % 5 == 0:
             # Read current temperature
             sensor_return = read_sensor()
             if sensor_return and len(sensor_return) == 3:
                 current_temp, current_humid, current_touch = sensor_return
-            else:
-                current_temp, current_humid, current_touch = None, None, None
 
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
@@ -190,7 +189,7 @@ def main():
             prune_csv()
             last_csv_time = time.time()
 
-        time.sleep(1)  # Sleep for short intervals to reduce CPU usage
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
