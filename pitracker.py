@@ -166,11 +166,11 @@ def generate_graph():
     plt.tight_layout()
     #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
-    if temp_graph:
+    if temp_graph is None:
+        temp_graph = io.BytesIO() 
+    else:
         temp_graph.seek(0)
         temp_graph.truncate(0)
-    else:
-        temp_graph = BytesIO()
     plt.savefig(temp_graph, format='png', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
