@@ -81,7 +81,7 @@ def display_temperature(current_temp, graph_path):
 
     # Display graph
     if temp_graph:
-        #graph_image = pygame.image.load(graph_path)
+        temp_graph.seek(0)
         graph_image = pygame.image.load(temp_graph, 'png')
         temp_graph.close()
         graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
