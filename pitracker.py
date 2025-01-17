@@ -20,6 +20,7 @@ DISPLAY_HEIGHT = 480
 BACKGROUND_COLOR = (0, 0, 0)
 TEXT_COLOR = (255, 255, 255)
 UPDATE_INTERVAL = 5
+GRAPH_UPDATE_INTERVAL = 300
 CSV_WRITE_INTERVAL = 3600  
 HOURS_TO_KEEP = 24
 
@@ -95,12 +96,12 @@ def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
     timestamps, temperatures = [], []
 
-    # Read data from CSV
-    with open(CSV_FILE, "r") as file:
-        reader = csv.reader(file)
-        for row in reader:
-            timestamps.append(datetime.fromisoformat(row[0]))
-            temperatures.append(float(row[1]))
+    if os.path.exists(CSV_FILE):
+        with open(CSV_FILE, "r") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                timestamps.append(datetime.fromisoformat(row[0]))
+                temperatures.append(float(row[1]))
 
     # Add data from the in-memory buffer
     for timestamp, temp in temp_buffer:
@@ -154,10 +155,11 @@ def generate_graph():
 
 def main():
     # 3 timers - one for constant updates, 5 minutes for graph updates, and 1 hour for CSV updates
+    last_graph_time = 0
+    last_csv_time = 0
+    
     pygame.mouse.set_visible(False)
-
     graph_path = "temperature_graph.png"
-    #last_graph_update = time.time()
 
     while True:
         for event in pygame.event.get():
@@ -177,25 +179,18 @@ def main():
 
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
-        if now.minute % 5 == 0 and now.second == 0:
+        if now - last_graph_time >= GRAPH_UPDATE_INTERVAL:  
             if current_temp is not None:
-                # Buffer the current temperature with a timestamp
                 temp_buffer.append([datetime.now().isoformat(), current_temp])
             generate_graph()
+            last_graph_time = time.time()
 
-        if now.minute == 0 and now.second == 0:
+        if now - last_csv_time >= CSV_WRITE_INTERVAL:
             write_csv_from_buffer()
             prune_csv()
+            last_csv_time = time.time()
 
         time.sleep(1)  # Sleep for short intervals to reduce CPU usage
-
-        '''
-        # Generate graph every 5 minutes
-        if time.time() - last_graph_update > 300
-            generate_graph()
-            last_graph_update = time.time()
-        '''
-
 
 if __name__ == "__main__":
     main()
