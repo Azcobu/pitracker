@@ -1,8 +1,8 @@
 import time
-import io
 import csv
 import os
 from datetime import datetime, timedelta
+from io import BytesIO
 import threading
 import pygame
 import serial
@@ -75,21 +75,33 @@ def prune_csv():
         writer = csv.writer(file)
         writer.writerows(rows)
 
+def is_png(data: BytesIO) -> bool:
+    try:
+        png_signature = b'\x89PNG\r\n\x1a\n'
+        data.seek(0)
+        header = data.read(8)  
+        data.seek(0) 
+        return header == png_signature
+    except Exception as err:
+        print(f'Error checking BytesIO object - {err}')
+        return False
+
 def display_temperature(current_temp, graph_path):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
     screen.fill(BACKGROUND_COLOR)
 
     # Display graph
-    if temp_graph:
+    if temp_graph and is_png(temp_graph):
         try:
             graph_image = pygame.image.load(temp_graph, 'png')
             graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
             screen.blit(graph_image, graph_rect)
         except Exception as err:
             print(f'Error loading graph: {err}')
+            print(type(temp_graph))
     else:
-        temp_graph = io.BytesIO()
+        temp_graph = BytesIO()
         placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
 
@@ -167,11 +179,11 @@ def generate_graph():
     #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
     if temp_graph is None:
-        temp_graph = io.BytesIO() 
+        temp_graph = BytesIO() 
     else:
         temp_graph.seek(0)
         temp_graph.truncate(0)
-    plt.savefig(temp_graph, format='png', bbox_inches='tight')
+    plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
 
