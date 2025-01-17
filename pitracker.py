@@ -108,6 +108,9 @@ def generate_graph():
         timestamps.append(datetime.fromisoformat(timestamp))
         temperatures.append(temp)
 
+    if not timestamps or not temperatures:
+        return
+
     # Sort the data by timestamp
     combined_data = sorted(zip(timestamps, temperatures), key=lambda x: x[0])
     timestamps, temperatures = zip(*combined_data)
@@ -154,7 +157,7 @@ def generate_graph():
     plt.close()
 
 def main():
-    # 3 timers - one for constant updates, 5 minutes for graph updates, and 1 hour for CSV updates
+    # 2 timers - 5 minutes for graph updates, and 1 hour for CSV updates
     last_graph_time = 0
     last_csv_time = 0
     
