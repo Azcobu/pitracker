@@ -82,11 +82,12 @@ def display_temperature(current_temp, graph_path):
 
     # Display graph
     if temp_graph:
-        temp_graph.seek(0)
-        temp_graph.truncate(0)
-        graph_image = pygame.image.load(temp_graph, 'png')
-        graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
-        screen.blit(graph_image, graph_rect)
+        try:
+            graph_image = pygame.image.load(temp_graph, 'png')
+            graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
+            screen.blit(graph_image, graph_rect)
+        except Exception as err:
+            print(f'Error loading graph: {err}')
     else:
         temp_graph = io.BytesIO()
         placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
@@ -165,7 +166,11 @@ def generate_graph():
     plt.tight_layout()
     #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
-    temp_graph = io.BytesIO()
+    if temp_graph:
+        temp_graph.seek(0)
+        temp_graph.truncate(0)
+    else:
+        temp_graph = BytesIO()
     plt.savefig(temp_graph, format='png', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
