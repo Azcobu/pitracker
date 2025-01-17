@@ -25,7 +25,6 @@ HOURS_TO_KEEP = 24
 
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
-pygame.display.set_caption("Temperature Display")
 font = pygame.font.SysFont(None, 96)
 
 # In-memory buffer for temperature readings
@@ -80,7 +79,7 @@ def display_temperature(current_temp, graph_path):
     # Display graph
     if os.path.exists(graph_path):
         graph_image = pygame.image.load(graph_path)
-        graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2 + 40))
+        graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
         screen.blit(graph_image, graph_rect)
     else:
         placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
@@ -88,7 +87,7 @@ def display_temperature(current_temp, graph_path):
 
     # Display current temperature
     temp_text = font.render(f"{current_temp:.1f} °C", True, TEXT_COLOR)
-    screen.blit(temp_text, (20, 20))
+    screen.blit(temp_text, (32, 32))
 
     pygame.display.flip()
 
@@ -175,10 +174,6 @@ def main():
                 current_temp, current_humid, current_touch = sensor_return
             else:
                 current_temp, current_humid, current_touch = None, None, None
-
-            if current_temp is not None:
-                # Buffer the current temperature with a timestamp
-                temp_buffer.append([datetime.now().isoformat(), current_temp])
 
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
