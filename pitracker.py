@@ -109,6 +109,7 @@ def generate_graph():
         temperatures.append(temp)
 
     if not timestamps or not temperatures:
+        print("Can't generate graph - no data available")
         return
 
     # Sort the data by timestamp
@@ -185,8 +186,8 @@ def main():
             print('Generating new graph...')
             if current_temp is not None:
                 temp_buffer.append([datetime.now().isoformat(), current_temp])
-            generate_graph()
-            last_graph_time = time.time()
+                generate_graph()
+                last_graph_time = time.time()
 
         if now_timestamp - last_csv_time >= CSV_WRITE_INTERVAL:
             write_csv_from_buffer()
