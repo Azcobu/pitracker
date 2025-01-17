@@ -87,7 +87,7 @@ def display_temperature(current_temp, graph_path):
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2 - 100, DISPLAY_HEIGHT // 2))
 
     # Display current temperature
-    temp_text = font.render(f"{current_temp:.2f} °C", True, TEXT_COLOR)
+    temp_text = font.render(f"{current_temp:.1f} °C", True, TEXT_COLOR)
     screen.blit(temp_text, (20, 20))
 
     pygame.display.flip()
@@ -148,6 +148,7 @@ def generate_graph():
     plt.gca().set_ylabel('')
     plt.gca().set_title('')
 
+    '''
     current_temp = df['temperature'].iloc[-1]
     plt.text(0.2, 0.85, f'{current_temp:.1f}°',  
             transform=plt.gca().transAxes, 
@@ -156,7 +157,8 @@ def generate_graph():
             fontfamily='Arial',
             color='cyan',
             ha='center',  
-            va='center')    
+            va='center')
+    ''' 
 
     plt.tight_layout()
     plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
