@@ -148,28 +148,17 @@ def generate_graph():
     plt.gca().set_ylabel('')
     plt.gca().set_title('')
 
-    '''
-    current_temp = df['temperature'].iloc[-1]
-    plt.text(0.2, 0.85, f'{current_temp:.1f}°',  
-            transform=plt.gca().transAxes, 
-            fontsize=80,  
-            fontweight='bold', 
-            fontfamily='Arial',
-            color='cyan',
-            ha='center',  
-            va='center')
-    ''' 
 
     plt.tight_layout()
     plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
     plt.close()
 
 def main():
+    # 3 timers - one for constant updates, 5 minutes for graph updates, and 1 hour for CSV updates
     pygame.mouse.set_visible(False)
-    threading.Thread(target=csv_writer_thread, daemon=True).start()
 
     graph_path = "temperature_graph.png"
-    last_graph_update = time.time()
+    #last_graph_update = time.time()
 
     while True:
         for event in pygame.event.get():
@@ -177,31 +166,41 @@ def main():
                 pygame.quit()
                 return
 
-        # Read current temperature
-        sensor_return = read_sensor()
-        if sensor_return and len(sensor_return) == 3:
-            current_temp, current_humid, current_touch = sensor_return
-        else:
-            current_temp, current_humid, current_touch = None, None, None
+        now = datetime.now()
 
-        if current_temp is not None:
-            # Buffer the current temperature with a timestamp
-            temp_buffer.append([datetime.now().isoformat(), current_temp])
+        if now.second % 5 == 0:
+            # Read current temperature
+            sensor_return = read_sensor()
+            if sensor_return and len(sensor_return) == 3:
+                current_temp, current_humid, current_touch = sensor_return
+            else:
+                current_temp, current_humid, current_touch = None, None, None
 
+            if current_temp is not None:
+                # Buffer the current temperature with a timestamp
+                temp_buffer.append([datetime.now().isoformat(), current_temp])
+
+            display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
+
+        if now.minute % 5 == 0 and now.second == 0:
+            if current_temp is not None:
+                # Buffer the current temperature with a timestamp
+                temp_buffer.append([datetime.now().isoformat(), current_temp])
+            generate_graph()
+
+        if now.minute == 0 and now.second == 0:
+            write_csv_from_buffer()
+            prune_csv()
+
+        time.sleep(1)  # Sleep for short intervals to reduce CPU usage
+
+        '''
         # Generate graph every 5 minutes
-        if time.time() - last_graph_update > 20: #QQQQ
+        if time.time() - last_graph_update > 300
             generate_graph()
             last_graph_update = time.time()
+        '''
 
-        # Display updates
-        display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
-        time.sleep(UPDATE_INTERVAL)
-
-def csv_writer_thread():
-    while True:
-        # Write buffered data to CSV every hour
-        write_csv_from_buffer()
-        time.sleep(CSV_WRITE_INTERVAL)
 
 if __name__ == "__main__":
     main()
