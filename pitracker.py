@@ -23,7 +23,6 @@ UPDATE_INTERVAL = 5
 CSV_WRITE_INTERVAL = 3600  
 HOURS_TO_KEEP = 24
 
-
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 pygame.display.set_caption("Temperature Display")
@@ -184,7 +183,7 @@ def main():
 
         # Read current temperature
         sensor_return = read_sensor()
-        if sensor_return:
+        if sensor_return and len(sensor_return) == 3:
             current_temp, current_humid, current_touch = sensor_return
         if current_temp is not None:
             # Buffer the current temperature with a timestamp
