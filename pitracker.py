@@ -167,9 +167,9 @@ def main():
                 pygame.quit()
                 return
 
-        now = datetime.now()
+        now_timestamp = int(time.time())
 
-        if now.second % 5 == 0:
+        if datetime.now().second % 5 == 0:
             # Read current temperature
             sensor_return = read_sensor()
             if sensor_return and len(sensor_return) == 3:
@@ -179,13 +179,13 @@ def main():
 
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
-        if now - last_graph_time >= GRAPH_UPDATE_INTERVAL:  
+        if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:  
             if current_temp is not None:
                 temp_buffer.append([datetime.now().isoformat(), current_temp])
             generate_graph()
             last_graph_time = time.time()
 
-        if now - last_csv_time >= CSV_WRITE_INTERVAL:
+        if now_timestamp - last_csv_time >= CSV_WRITE_INTERVAL:
             write_csv_from_buffer()
             prune_csv()
             last_csv_time = time.time()
