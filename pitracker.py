@@ -145,6 +145,7 @@ def generate_graph():
     plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
     plt.gca().yaxis.set_major_locator(plt.MultipleLocator(5)) 
+    plt.gca().set_frame_on(False)
 
     plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
 
@@ -183,13 +184,15 @@ def main():
             display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
 
         if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:
-            print('Generating new graph...')
             if current_temp is not None:
+                
+                print(f'{datetime.now().strftime("%H:%M:%S")} - generating new graph...')
                 temp_buffer.append([datetime.now().isoformat(), current_temp])
                 generate_graph()
                 last_graph_time = time.time()
 
         if now_timestamp - last_csv_time >= CSV_WRITE_INTERVAL:
+            print(f'{datetime.now().strftime("%H:%M:%S")} - writing to CSV...')
             write_csv_from_buffer()
             prune_csv()
             last_csv_time = time.time()
