@@ -98,6 +98,8 @@ def display_temperature(current_temp, graph_path):
 
 def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
+    global temp_graph
+
     timestamps, temperatures = [], []
 
     if os.path.exists(CSV_FILE):
