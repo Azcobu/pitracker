@@ -32,8 +32,6 @@ font = pygame.font.SysFont(None, 96)
 # In-memory buffer for temperature readings
 temp_buffer = []
 
-ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-
 def read_sensor():
     """Reads the current data from the sensor via the serial connection."""
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
@@ -45,7 +43,7 @@ def read_sensor():
                 sernum, temp, humid, touch = line.split(',')
                 return float(temp), float(humid), float(touch)
             except Exception as err:
-                print(err)
+                print(f'{err} - returned output was {line}')
                 return None
             
 def write_csv_from_buffer():
@@ -80,10 +78,6 @@ def display_temperature(current_temp, graph_path):
     """Updates the Pygame display with the current temperature and graph."""
     screen.fill(BACKGROUND_COLOR)
 
-    # Display current temperature
-    temp_text = font.render(f"{current_temp:.2f} °C", True, TEXT_COLOR)
-    screen.blit(temp_text, (20, 20))
-
     # Display graph
     if os.path.exists(graph_path):
         graph_image = pygame.image.load(graph_path)
@@ -92,6 +86,10 @@ def display_temperature(current_temp, graph_path):
     else:
         placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2 - 100, DISPLAY_HEIGHT // 2))
+
+    # Display current temperature
+    temp_text = font.render(f"{current_temp:.2f} °C", True, TEXT_COLOR)
+    screen.blit(temp_text, (20, 20))
 
     pygame.display.flip()
 
@@ -115,29 +113,14 @@ def generate_graph():
     combined_data = sorted(zip(timestamps, temperatures), key=lambda x: x[0])
     timestamps, temperatures = zip(*combined_data)
 
-    # Generate the graph
-    plt.figure(figsize=(10, 5))
-    plt.plot(timestamps, temperatures, marker="o")
-    plt.title("Temperature (Last 24 Hours)")
-    plt.xlabel("Time")
-    plt.ylabel("Temperature (C)")
-    plt.grid()
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig("temperature_graph.png")
-    plt.close()
+ 
+    #df = pd.read_csv(CSV_FILE, parse_dates=['timestamp'])
 
-
-    '''
-    with open(CSV_FILE, "r") as file:
-        reader = csv.reader(file)
-        for row in reader:
-            timestamps.append(datetime.fromisoformat(row[0]))
-            temperatures.append(float(row[1]))
-    '''
-
-    '''
-    df = pd.read_csv(CSV_FILE, parse_dates=['timestamp'])
+    df = pd.DataFrame()
+    df['timestamp'] = timestamps
+    df['timestamp'] = pd.to_datetime(series['Time'])
+    df.set_index('timestamp', inplace=True)
+    df['temperature'] = temperatures
 
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
@@ -159,6 +142,7 @@ def generate_graph():
     plt.imshow(gradient_colors, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
 
     plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
+    #plt.plot(timestamps, temperatures, color='white', linewidth=2)
 
     plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
@@ -183,9 +167,10 @@ def generate_graph():
     plt.tight_layout()
     plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
     plt.close()
-    '''
+
 
 def main():
+    pygame.mouse.set_visible(False)
     threading.Thread(target=csv_writer_thread, daemon=True).start()
 
     graph_path = "temperature_graph.png"
@@ -198,13 +183,15 @@ def main():
                 return
 
         # Read current temperature
-        current_temp, current_humid, current_touch = read_sensor()
+        sensor_return = read_sensor()
+        if sensor_return:
+            current_temp, current_humid, current_touch = sensor_return
         if current_temp is not None:
             # Buffer the current temperature with a timestamp
             temp_buffer.append([datetime.now().isoformat(), current_temp])
 
         # Generate graph every 5 minutes
-        if time.time() - last_graph_update > CSV_WRITE_INTERVAL:
+        if time.time() - last_graph_update > 60:
             generate_graph()
             last_graph_update = time.time()
 
