@@ -1,4 +1,5 @@
 import time
+import io
 import csv
 import os
 from datetime import datetime, timedelta
@@ -26,7 +27,8 @@ HOURS_TO_KEEP = 24
 
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
-font = pygame.font.SysFont(None, 96)
+font = pygame.font.SysFont(None, 112)
+temp_graph = None
 
 # In-memory buffer for temperature readings
 temp_buffer = []
@@ -78,8 +80,10 @@ def display_temperature(current_temp, graph_path):
     screen.fill(BACKGROUND_COLOR)
 
     # Display graph
-    if os.path.exists(graph_path):
-        graph_image = pygame.image.load(graph_path)
+    if temp_graph:
+        #graph_image = pygame.image.load(graph_path)
+        graph_image = pygame.image.load(temp_graph, 'png')
+        temp_graph.close()
         graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
         screen.blit(graph_image, graph_rect)
     else:
@@ -87,8 +91,8 @@ def display_temperature(current_temp, graph_path):
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2 - 100, DISPLAY_HEIGHT // 2))
 
     # Display current temperature
-    temp_text = font.render(f"{current_temp:.1f} °C", True, TEXT_COLOR)
-    screen.blit(temp_text, (32, 32))
+    temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOR)
+    screen.blit(temp_text, (64, 32))
 
     pygame.display.flip()
 
@@ -155,7 +159,11 @@ def generate_graph():
 
 
     plt.tight_layout()
-    plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
+    #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
+
+    temp_graph = io.BytesIO()
+    plt.savefig(temp_graph, format='png', bbox_inches='tight')
+    temp_graph.seek(0)
     plt.close()
 
 def main():
