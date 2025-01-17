@@ -117,7 +117,7 @@ def generate_graph():
 
     df = pd.DataFrame()
     df['timestamp'] = timestamps
-    df['timestamp'] = pd.to_datetime(series['Time'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
     df.set_index('timestamp', inplace=True)
     df['temperature'] = temperatures
 
@@ -185,12 +185,15 @@ def main():
         sensor_return = read_sensor()
         if sensor_return and len(sensor_return) == 3:
             current_temp, current_humid, current_touch = sensor_return
+        else:
+            current_temp, current_humid, current_touch = None, None, None
+            
         if current_temp is not None:
             # Buffer the current temperature with a timestamp
             temp_buffer.append([datetime.now().isoformat(), current_temp])
 
         # Generate graph every 5 minutes
-        if time.time() - last_graph_update > 60:
+        if time.time() - last_graph_update > 20: #QQQQ
             generate_graph()
             last_graph_update = time.time()
 
