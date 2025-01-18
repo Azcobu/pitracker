@@ -308,7 +308,7 @@ def main():
             prune_csv()
             last_csv_time = time.time()
 
-        if current_touch > 600:
+        if current_touch and current_touch > 600:
             if not display_on:
                 toggle_display(True)
                 display_on = True
