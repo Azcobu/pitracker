@@ -167,6 +167,22 @@ def generate_graph():
         'humidity': humidities
     })
 
+    fig = plot_temp_humidity(df)
+    temp_graph = get_temp_graph()
+    temp_graph.seek(0)
+    temp_graph.truncate(0)
+    plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
+    temp_graph.seek(0)
+    plt.close()
+
+
+    '''
+    df = pd.DataFrame({
+        'timestamp': timestamps,
+        'temperature': temperatures,
+        'humidity': humidities
+    })
+
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
 
@@ -209,6 +225,69 @@ def generate_graph():
     plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
+    '''
+def plot_temp_humidity(df):
+    plt.figure(figsize=(10, 6), dpi=80)
+    plt.style.use('dark_background')
+
+    # Define the temperature range and colours
+    temperature_range = [0, 15, 25, 30, 40, 45]  
+    colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+
+    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
+    norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
+    
+    # Convert timestamps and get data arrays
+    timestamps = mdates.date2num(df['timestamp'])
+    temperatures = df['temperature'].to_numpy()
+    humidities = df['humidity'].to_numpy()
+    
+    # Create gradient mesh using timestamps directly
+    y_points = np.linspace(0, 45, 500)
+    X, Y = np.meshgrid(timestamps, y_points)
+    
+    # Interpolate temperatures to match X grid points
+    temp_interpolated = np.interp(X[0], timestamps, temperatures)
+    
+    # Create mask for each vertical slice
+    mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
+    
+    # Create gradient colors
+    Z = norm(Y)
+    gradient_colours = cmap(Z)
+    gradient_colours[mask] = (0, 0, 0, 0)  # Make masked areas transparent
+
+    # Plot gradient
+    plt.imshow(gradient_colours, extent=(timestamps[0], timestamps[-1], 0, 45), 
+              aspect='auto', origin='lower')
+
+    # Plot temperature line
+    plt.plot(df['timestamp'], temperatures, color='white', linewidth=2, label='Temperature')
+    
+    # Plot scaled humidity line
+    scaled_humidity = (humidities / 100) * 45  # Scale humidity to match temperature range
+    plt.plot(df['timestamp'], scaled_humidity, color='skyblue', linewidth=2, 
+            label='Humidity', alpha=0.8)
+
+    # Grid and formatting
+    plt.grid(visible=True, which='major', color='gray', linestyle='--', 
+            linewidth=0.5, alpha=0.5)
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator())
+    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(5))
+    plt.gca().set_frame_on(False)
+
+    # Add second y-axis for humidity percentage
+    ax2 = plt.gca().twinx()
+    ax2.set_ylim(0, 100)
+    ax2.tick_params(axis='y', labelcolor='skyblue')
+    ax2.set_ylabel('Humidity %', color='skyblue')
+
+    # Formatting
+    plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+
+    return plt.gcf()
 
 def main():
     # 2 timers - 5 minutes for graph updates, and 1 hour for CSV updates
