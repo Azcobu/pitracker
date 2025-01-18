@@ -28,7 +28,7 @@ HOURS_TO_KEEP = 24
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 font = pygame.font.SysFont(None, 112)
-temp_graph = None
+temp_graph = BytesIO() 
 
 # In-memory buffer for temperature readings
 temp_buffer = []
@@ -94,6 +94,7 @@ def display_temperature(current_temp, graph_path):
     # Display graph
     if temp_graph and is_png(temp_graph):
         try:
+            temp_graph.seek(0)
             graph_image = pygame.image.load(temp_graph, 'png')
             graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
             screen.blit(graph_image, graph_rect)
@@ -101,7 +102,6 @@ def display_temperature(current_temp, graph_path):
             print(f'Error loading graph: {err}')
             print(type(temp_graph))
     else:
-        temp_graph = BytesIO()
         placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
 
@@ -178,11 +178,8 @@ def generate_graph():
     plt.tight_layout()
     #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
-    if temp_graph is None:
-        temp_graph = BytesIO() 
-    else:
-        temp_graph.seek(0)
-        temp_graph.truncate(0)
+    temp_graph.seek(0)
+    temp_graph.truncate(0)
     plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
