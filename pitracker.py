@@ -261,10 +261,14 @@ def plot_temp_humidity(df):
 
 def toggle_display(status):
     """Toggle the HDMI display on or off."""
-    mode = "on" if status else "off"
+    mode = "on\n" if status else "off\n"
     try:
-        os.system(f'echo {mode} > /sys/class/drm/card0-HDMI-A-1/status')
-        print(f"HDMI turned {mode}.")
+        f = open("/sys/class/drm/card0-HDMI-A-1/status", "w")
+        f.write(mode)
+        f.flush()
+        os.fsync(f.fileno())
+        f.close()  # Explicit close
+        print(f"HDMI turned {'on' if status else 'off'}.")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
