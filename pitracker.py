@@ -18,16 +18,18 @@ BAUD_RATE = 9600
 CSV_FILE = "temperature_log.csv"
 DISPLAY_WIDTH = 800
 DISPLAY_HEIGHT = 480
-BACKGROUND_COLOR = (0, 0, 0)
-TEXT_COLOR = (255, 255, 255)
+BACKGROUND_COLOUR = (0, 0, 0)
+TEXT_COLOUR = (255, 255, 255)
+TEXT2_COLOUR = (0, 255, 0)
 UPDATE_INTERVAL = 5
-GRAPH_UPDATE_INTERVAL = 300
-CSV_WRITE_INTERVAL = 3600
+GRAPH_UPDATE_INTERVAL = 60
+CSV_WRITE_INTERVAL = 300
 HOURS_TO_KEEP = 24
 
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 font = pygame.font.SysFont(None, 112)
+font2 = font = pygame.font.SysFont(None, 64)
 temp_graph = BytesIO() 
 
 # In-memory buffer for temperature readings
@@ -39,7 +41,7 @@ def read_sensor():
     
         # Read a line from the serial port
         line = ser.readline().decode('utf-8').strip()
-        print(f'{datetime.now().strftime("%H:%M:%S")} - Sensor returned: {line}')
+        #print(f'{datetime.now().strftime("%H:%M:%S")} - Sensor returned: {line}')
         if line:
             try:
                 sernum, temp, humid, touch = line.split(',')
@@ -93,10 +95,10 @@ def get_temp_graph():
         temp_graph = BytesIO()
     return temp_graph
 
-def display_temperature(current_temp):
+def display_temperature(current_temp, current_humid):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
-    screen.fill(BACKGROUND_COLOR)
+    screen.fill(BACKGROUND_COLOUR)
 
     # Display graph
     if temp_graph and is_png(temp_graph):
@@ -111,15 +113,23 @@ def display_temperature(current_temp):
             print(f'Error loading graph: {err}')
             print(type(temp_graph))
     else:
-        placeholder_text = font.render("Graph not available", True, TEXT_COLOR)
+        placeholder_text = font.render("Graph not available", True, TEXT_COLOUR)
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
 
     # Display current temperature
     if isinstance(current_temp, (float, int)):
-        temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOR)
+        temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOUR)
     else:
-        temp_text = font.render("N/A", True, TEXT_COLOR)
+        temp_text = font.render("N/A", True, TEXT_COLOUR)
     screen.blit(temp_text, (32, 32))
+
+    # Display current humidity
+
+    if isinstance(current_humid, (float, int)):
+        temp_humid = font2.render(f"{current_humid:.1f}%", True, TEXT2_COLOUR)
+    else:
+        temp_text = font2.render("N/A", True, TEXT2_COLOUR)
+    screen.blit(temp_text, (32, 120))
 
     pygame.display.flip()
 
@@ -127,7 +137,7 @@ def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
     global temp_graph
 
-    timestamps, temperatures = [], []
+    timestamps, temperatures, humidities = [], [], []
 
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "r") as file:
@@ -135,45 +145,50 @@ def generate_graph():
             for row in reader:
                 timestamps.append(datetime.fromisoformat(row[0]))
                 temperatures.append(float(row[1]))
+                humidities.append(float(row[2]))
 
     # Add data from the in-memory buffer
-    for timestamp, temp in temp_buffer:
+    for timestamp, temp, humid in temp_buffer:
         timestamps.append(datetime.fromisoformat(timestamp))
         temperatures.append(temp)
+        humidities.append(humid)
 
     if not timestamps or not temperatures:
         print("Can't generate graph - no data available")
         return
 
     # Sort the data by timestamp
-    combined_data = sorted(zip(timestamps, temperatures), key=lambda x: x[0])
-    timestamps, temperatures = zip(*combined_data)
+    combined_data = sorted(zip(timestamps, temperatures, humidities), key=lambda x: x[0])
+    timestamps, temperatures, humidities = zip(*combined_data)
 
     df = pd.DataFrame({
         'timestamp': timestamps,
         'temperature': temperatures
+        'humidity': humidities
     })
 
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
 
-    # Define the updated temperature range and colors
+    # Define the updated temperature range and colours
     temperature_range = [0, 15, 25, 30, 40, 45]  
-    colors = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+    colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
 
-    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colors)
+    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
     norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
     timestamps = mdates.date2num(df['timestamp'])  # Convert timestamps to numeric format
     temperatures = df['temperature'].to_numpy()  # Get temperatures as a numpy array
+    humidities = df['humidity'].to_numpy()
     X, Y = np.meshgrid(timestamps, np.linspace(0, 45, 500))  # Extend range to 45 for gradient
     Z = norm(Y)  # Normalize the vertical gradient
-    gradient_colors = cmap(Z)  # Map normalized values to colors
+    gradient_colours = cmap(Z)  # Map normalized values to colours
     mask = Y > np.interp(X[0], timestamps, temperatures)  # Mask above the curve
-    gradient_colors[mask] = (0, 0, 0, 0)  # Make masked areas transparent
+    gradient_colours[mask] = (0, 0, 0, 0)  # Make masked areas transparent
 
-    plt.imshow(gradient_colors, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
+    plt.imshow(gradient_colours, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
 
     plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
+    plt.plot(df['timestamp'], df['humidity'], color='blue', linewidth=2)
 
     plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
@@ -186,9 +201,7 @@ def generate_graph():
     plt.gca().set_ylabel('')
     plt.gca().set_title('')
 
-
     plt.tight_layout()
-    #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
     temp_graph = get_temp_graph()
     temp_graph.seek(0)
@@ -219,13 +232,14 @@ def main():
             if sensor_return and len(sensor_return) == 3:
                 current_temp, current_humid, current_touch = sensor_return
 
-            display_temperature(current_temp if current_temp is not None else 'N/A')
+            display_temperature(current_temp if current_temp is not None else 'N/A',\
+                                current_humid if current_humid is not None else 'N/A')
 
         if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:
             if current_temp is not None:
                 
                 print(f'{datetime.now().strftime("%H:%M:%S")} - generating new graph...')
-                temp_buffer.append([datetime.now().isoformat(), current_temp])
+                temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
                 generate_graph()
                 last_graph_time = time.time()
 
