@@ -104,9 +104,9 @@ def display_temperature(current_temp):
     if temp_graph and is_png(temp_graph):
         try:
             temp_graph.seek(0)
-            print("Before pygame.image.load - BytesIO closed:", temp_graph.closed)
-            graph_image = pygame.image.load(temp_graph, 'png')
-            print("After pygame.image.load - BytesIO closed:", temp_graph.closed)
+            # Create a copy of the data for pygame to use
+            temp_data = BytesIO(temp_graph.getvalue())
+            graph_image = pygame.image.load(temp_data, 'png')
             graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
             screen.blit(graph_image, graph_rect)
         except Exception as err:
