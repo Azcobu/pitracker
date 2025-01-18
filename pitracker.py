@@ -94,6 +94,13 @@ def get_temp_graph():
         temp_graph = BytesIO()
     return temp_graph
 
+def nice_round(innum):
+    innum = str(round(innum, 1))
+    if innum.endswith('.0'):
+        return innum[:-2]
+    else:
+        return innum
+
 def display_temperature(current_temp, current_humid):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
@@ -119,7 +126,7 @@ def display_temperature(current_temp, current_humid):
 
     # Display current temperature
     if isinstance(current_temp, (float, int)):
-        formatted_temp = int(current_temp) if current_temp.is_integer() else round(current_temp, 1)
+        formatted_temp = nice_round(current_temp)
         temp_text = font.render(f"{formatted_temp}°", True, TEXT_COLOUR)
     else:
         temp_text = font.render("N/A", True, TEXT_COLOUR)
@@ -128,7 +135,7 @@ def display_temperature(current_temp, current_humid):
     # Display current humidity
 
     if isinstance(current_humid, (float, int)):
-        formatted_humid = int(current_humid) if current_humid.is_integer() else round(current_humid, 1)
+        formatted_humid = nice_round(current_humid)
         temp_humid = font2.render(f"{formatted_humid}%", True, TEXT2_COLOUR)
     else:
         temp_humid = font2.render("N/A", True, TEXT2_COLOUR)
