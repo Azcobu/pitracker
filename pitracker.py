@@ -76,6 +76,7 @@ def prune_csv():
         writer.writerows(rows)
 
 def is_png(data: BytesIO) -> bool:
+    print(f"is_png check - BytesIO closed state: {data.closed}")  # Debug line
     try:
         png_signature = b'\x89PNG\r\n\x1a\n'
         data.seek(0)
@@ -84,7 +85,14 @@ def is_png(data: BytesIO) -> bool:
         return header == png_signature
     except Exception as err:
         print(f'Error checking BytesIO object - {err}')
+        print(f"After error - BytesIO closed state: {data.closed}")  # Debug line
         return False
+
+def get_temp_graph():
+    global temp_graph
+    if temp_graph is None or temp_graph.closed:
+        temp_graph = BytesIO()
+    return temp_graph
 
 def display_temperature(current_temp, graph_path):
     """Updates the Pygame display with the current temperature and graph."""
@@ -92,6 +100,7 @@ def display_temperature(current_temp, graph_path):
     screen.fill(BACKGROUND_COLOR)
 
     # Display graph
+    print(f"Before is_png - BytesIO closed state: {temp_graph.closed}")
     if temp_graph and is_png(temp_graph):
         try:
             temp_graph.seek(0)
@@ -178,6 +187,7 @@ def generate_graph():
     plt.tight_layout()
     #plt.savefig('temperature_graph.png', facecolor='black', edgecolor='none')
 
+    temp_graph = get_temp_graph()
     temp_graph.seek(0)
     temp_graph.truncate(0)
     plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
