@@ -263,18 +263,13 @@ def toggle_display(status):
     """Toggle the HDMI display on or off."""
     mode = "on\n" if status else "off\n"
     try:
-        process = subprocess.run(
-            ["tee", "/sys/class/drm/card0-HDMI-A-1/status"],
-            input=mode,
-            text=True,
-            check=True
-        )
-        if process.returncode == 0:
-            print(f"HDMI turned {'on' if status else 'off'}.")
-        else:
-            print(f"HDMI toggle failed with return code {process.returncode}.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error toggling HDMI: {e}")
+        with open("/sys/class/drm/card0-HDMI-A-1/status", "w") as f:
+            f.write(mode)
+        print(f"HDMI turned {'on' if status else 'off'}.")
+    except PermissionError:
+        print("Permission denied. Ensure you have the necessary rights or adjust file permissions.")
+    except FileNotFoundError:
+        print("Display control file not found. Ensure the path is correct.")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
