@@ -178,9 +178,10 @@ def generate_graph():
     temp_graph.seek(0)
     plt.close()
 
-def plot_temp_humidity(df): 
-    plt.figure(figsize=(10, 6), dpi=80)
+def plot_temp_humidity(df):
+    fig = plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
+    ax1 = plt.gca()
 
     # Define the temperature range and colours
     temperature_range = [0, 15, 25, 30, 40, 45]  
@@ -195,7 +196,7 @@ def plot_temp_humidity(df):
     humidities = df['humidity'].to_numpy()
     
     # Create a regular grid of x (time) points
-    x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)  # Increase resolution
+    x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
     y_points = np.linspace(0, 45, 500)
     
     # Create the mesh grid using the regular x points
@@ -210,41 +211,47 @@ def plot_temp_humidity(df):
     # Create gradient colors
     Z = norm(Y)
     gradient_colours = cmap(Z)
-    gradient_colours[mask] = (0, 0, 0, 0)  # Make masked areas transparent
+    gradient_colours[mask] = (0, 0, 0, 0)
 
     # Plot gradient using the numerical timestamps
-    plt.imshow(gradient_colours, 
+    ax1.imshow(gradient_colours, 
               extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
               aspect='auto', 
               origin='lower')
 
     # Plot temperature line
-    plt.plot(df['timestamp'], temperatures, color='white', linewidth=2, label='Temperature')
+    temp_line = ax1.plot(df['timestamp'], temperatures, color='white', 
+                        linewidth=2, label='Temperature')[0]
     
-    # Plot scaled humidity line
-    scaled_humidity = (humidities / 100) * 45  # Scale humidity to match temperature range
-    plt.plot(df['timestamp'], scaled_humidity, color='blue', linewidth=2, 
-            label='Humidity', alpha=0.8)
+    # Add second y-axis for humidity
+    ax2 = ax1.twinx()
+    
+    # Plot scaled humidity line on second axis
+    scaled_humidity = (humidities / 100) * 45
+    humidity_line = ax2.plot(df['timestamp'], scaled_humidity, color='blue', 
+                           linewidth=2, label='Humidity', alpha=0.8)[0]
 
     # Grid and formatting
-    plt.grid(visible=True, which='major', color='gray', linestyle='--', 
+    ax1.grid(visible=True, which='major', color='gray', linestyle='--', 
             linewidth=0.5, alpha=0.5)
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator())
-    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(5))
-    plt.gca().set_frame_on(False)
+    ax1.xaxis.set_major_locator(mdates.HourLocator())
+    ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
+    ax1.set_frame_on(False)
 
-    # Add second y-axis for humidity percentage
-    ax2 = plt.gca().twinx()
+    # Configure second y-axis
     ax2.set_ylim(0, 100)
-    ax2.tick_params(axis='y', labelcolor='skyblue')
-    ax2.set_ylabel('Humidity %', color='skyblue')
+    ax2.tick_params(axis='y', labelcolor='blue')
+    ax2.set_ylabel('Humidity %', color='blue')
 
-    # Formatting
+    # Create combined legend for both axes
+    lines = [temp_line, humidity_line]
+    labels = [line.get_label() for line in lines]
+    ax1.legend(lines, labels, loc='upper right')
+
     plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
-    plt.legend(loc='upper right')
     plt.tight_layout()
 
-    return plt.gcf()
+    return fig
 
 def main():
     # 2 timers - 5 minutes for graph updates, and 1 hour for CSV updates
