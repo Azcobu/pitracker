@@ -6,6 +6,7 @@ from io import BytesIO
 import threading
 import pygame
 import serial
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
@@ -94,7 +95,7 @@ def get_temp_graph():
         temp_graph = BytesIO()
     return temp_graph
 
-def display_temperature(current_temp, graph_path):
+def display_temperature(current_temp):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
     screen.fill(BACKGROUND_COLOR)
@@ -104,7 +105,9 @@ def display_temperature(current_temp, graph_path):
     if temp_graph and is_png(temp_graph):
         try:
             temp_graph.seek(0)
+            print("Before pygame.image.load - BytesIO closed:", temp_graph.closed)
             graph_image = pygame.image.load(temp_graph, 'png')
+            print("After pygame.image.load - BytesIO closed:", temp_graph.closed)
             graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
             screen.blit(graph_image, graph_rect)
         except Exception as err:
