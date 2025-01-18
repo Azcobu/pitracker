@@ -128,8 +128,8 @@ def display_temperature(current_temp, current_humid):
     if isinstance(current_humid, (float, int)):
         temp_humid = font2.render(f"{current_humid:.1f}%", True, TEXT2_COLOUR)
     else:
-        temp_text = font2.render("N/A", True, TEXT2_COLOUR)
-    screen.blit(temp_text, (32, 120))
+        temp_humid = font2.render("N/A", True, TEXT2_COLOUR)
+    screen.blit(temp_humid, (32, 120))
 
     pygame.display.flip()
 
@@ -188,7 +188,7 @@ def generate_graph():
     plt.imshow(gradient_colours, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
 
     plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
-    plt.plot(df['timestamp'], df['humidity'], color='blue', linewidth=2)
+    #plt.plot(df['timestamp'], df['humidity'], color='blue', linewidth=2)
 
     plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
