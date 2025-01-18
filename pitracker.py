@@ -3,7 +3,6 @@ import csv
 import os
 from datetime import datetime, timedelta
 from io import BytesIO
-import threading
 import pygame
 import serial
 import matplotlib.pyplot as plt
@@ -44,7 +43,7 @@ def read_sensor():
         #print(f'{datetime.now().strftime("%H:%M:%S")} - Sensor returned: {line}')
         if line:
             try:
-                sernum, temp, humid, touch = line.split(',')
+                _, temp, humid, touch = line.split(',')
                 return float(temp), float(humid), float(touch)
             except Exception as err:
                 print(f'{err} - returned output was {line}')
@@ -121,7 +120,7 @@ def display_temperature(current_temp, current_humid):
         temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOUR)
     else:
         temp_text = font.render("N/A", True, TEXT_COLOUR)
-    screen.blit(temp_text, (32, 32))
+    screen.blit(temp_text, (42, 32))
 
     # Display current humidity
 
@@ -129,7 +128,7 @@ def display_temperature(current_temp, current_humid):
         temp_humid = font2.render(f"{current_humid:.1f}%", True, TEXT2_COLOUR)
     else:
         temp_humid = font2.render("N/A", True, TEXT2_COLOUR)
-    screen.blit(temp_humid, (32, 120))
+    screen.blit(temp_humid, (42, 115))
 
     pygame.display.flip()
 
@@ -174,58 +173,6 @@ def generate_graph():
     plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
     temp_graph.seek(0)
     plt.close()
-
-
-    '''
-    df = pd.DataFrame({
-        'timestamp': timestamps,
-        'temperature': temperatures,
-        'humidity': humidities
-    })
-
-    plt.figure(figsize=(10, 6), dpi=80)
-    plt.style.use('dark_background')
-
-    # Define the updated temperature range and colours
-    temperature_range = [0, 15, 25, 30, 40, 45]  
-    colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
-
-    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
-    norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
-    timestamps = mdates.date2num(df['timestamp'])  # Convert timestamps to numeric format
-    temperatures = df['temperature'].to_numpy()  # Get temperatures as a numpy array
-    humidities = df['humidity'].to_numpy()
-    X, Y = np.meshgrid(timestamps, np.linspace(0, 45, 500))  # Extend range to 45 for gradient
-    Z = norm(Y)  # Normalize the vertical gradient
-    gradient_colours = cmap(Z)  # Map normalized values to colours
-    mask = Y > np.interp(X[0], timestamps, temperatures)  # Mask above the curve
-    gradient_colours[mask] = (0, 0, 0, 0)  # Make masked areas transparent
-
-    plt.imshow(gradient_colours, extent=(timestamps[0], timestamps[-1], 0, 45), aspect='auto', origin='lower')
-
-    plt.plot(df['timestamp'], df['temperature'], color='white', linewidth=2)
-    #plt.plot(df['timestamp'], df['humidity'], color='blue', linewidth=2)
-
-    plt.grid(visible=True, which='major', color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator())  
-    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(5)) 
-    plt.gca().set_frame_on(False)
-
-    plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
-
-    plt.gca().set_xlabel('')
-    plt.gca().set_ylabel('')
-    plt.gca().set_title('')
-
-    plt.tight_layout()
-
-    temp_graph = get_temp_graph()
-    temp_graph.seek(0)
-    temp_graph.truncate(0)
-    plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
-    temp_graph.seek(0)
-    plt.close()
-    '''
 
 def plot_temp_humidity(df): 
     plt.figure(figsize=(10, 6), dpi=80)
@@ -272,7 +219,7 @@ def plot_temp_humidity(df):
     
     # Plot scaled humidity line
     scaled_humidity = (humidities / 100) * 45  # Scale humidity to match temperature range
-    plt.plot(df['timestamp'], scaled_humidity, color='skyblue', linewidth=2, 
+    plt.plot(df['timestamp'], scaled_humidity, color='blue', linewidth=2, 
             label='Humidity', alpha=0.8)
 
     # Grid and formatting
