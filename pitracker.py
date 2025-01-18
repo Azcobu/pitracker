@@ -20,7 +20,7 @@ DISPLAY_WIDTH = 800
 DISPLAY_HEIGHT = 480
 BACKGROUND_COLOUR = (0, 0, 0)
 TEXT_COLOUR = (255, 255, 255)
-TEXT2_COLOUR = (0, 255, 0)
+TEXT2_COLOUR = (0, 0, 255)
 UPDATE_INTERVAL = 5
 GRAPH_UPDATE_INTERVAL = 60
 CSV_WRITE_INTERVAL = 300
@@ -29,7 +29,7 @@ HOURS_TO_KEEP = 24
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 font = pygame.font.SysFont(None, 112)
-font2 = font = pygame.font.SysFont(None, 64)
+font2 = pygame.font.SysFont(None, 48)
 temp_graph = BytesIO() 
 
 # In-memory buffer for temperature readings
