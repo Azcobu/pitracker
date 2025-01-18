@@ -6,7 +6,6 @@ from io import BytesIO
 import threading
 import pygame
 import serial
-matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
