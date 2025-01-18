@@ -1,4 +1,5 @@
 import time
+import subprocess
 import csv
 import os
 from datetime import datetime, timedelta
@@ -24,6 +25,7 @@ UPDATE_INTERVAL = 5
 GRAPH_UPDATE_INTERVAL = 300
 CSV_WRITE_INTERVAL = 3600
 HOURS_TO_KEEP = 24
+SCREEN_TIMEOUT = 60
 
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
@@ -94,7 +96,7 @@ def get_temp_graph():
         temp_graph = BytesIO()
     return temp_graph
 
-def nice_round(innum):
+def nice_round(innum): 
     innum = str(round(innum, 1))
     if innum.endswith('.0'):
         return innum[:-2]
@@ -257,10 +259,20 @@ def plot_temp_humidity(df):
 
     return fig
 
+def toggle_display(status):
+    mode = "on\n" if status else "off\n"
+    try:
+        # Use the mode determined by the status
+        subprocess.run(["sudo", "tee", "/sys/class/drm/card0-HDMI-A-1/status"], input=mode, text=True)
+        print(f"HDMI turned {'on' if status else 'off'}.")
+    except Exception as e:
+        print(f"Error toggling HDMI: {e}")
+
 def main():
-    # 2 timers - 5 minutes for graph updates, and 1 hour for CSV updates
     last_graph_time = 0
     last_csv_time = 0
+    display_on_time = 0
+    display_on = True
     
     pygame.mouse.set_visible(False)
 
@@ -295,6 +307,19 @@ def main():
             write_csv_from_buffer()
             prune_csv()
             last_csv_time = time.time()
+
+        if current_touch > 600:
+            if not display_on:
+                toggle_display(True)
+                display_on = True
+                display_on_time = 0
+
+        if display_on:
+            display_on_time += 1
+            if display_on_time >= SCREEN_TIMEOUT:
+                toggle_display(False)
+                display_on = False
+                display_on_time = 0
 
         time.sleep(1)
 
