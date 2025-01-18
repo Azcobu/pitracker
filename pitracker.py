@@ -219,7 +219,7 @@ def main():
             if sensor_return and len(sensor_return) == 3:
                 current_temp, current_humid, current_touch = sensor_return
 
-            display_temperature(current_temp if current_temp is not None else 0.0, graph_path)
+            display_temperature(current_temp if current_temp is not None else 'N/A')
 
         if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:
             if current_temp is not None:
