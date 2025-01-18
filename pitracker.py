@@ -106,7 +106,7 @@ def nice_round(innum):
 def display_temperature(current_temp, current_humid):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
-    left_margin = 50
+    left_margin = 55
 
     screen.fill(BACKGROUND_COLOUR)
     
@@ -263,14 +263,16 @@ def toggle_display(status):
     """Toggle the HDMI display on or off."""
     mode = "on\n" if status else "off\n"
     try:
-        # Write the mode directly to the file
-        subprocess.run(
+        process = subprocess.run(
             ["tee", "/sys/class/drm/card0-HDMI-A-1/status"],
             input=mode,
             text=True,
             check=True
         )
-        print(f"HDMI turned {'on' if status else 'off'}.")
+        if process.returncode == 0:
+            print(f"HDMI turned {'on' if status else 'off'}.")
+        else:
+            print(f"HDMI toggle failed with return code {process.returncode}.")
     except subprocess.CalledProcessError as e:
         print(f"Error toggling HDMI: {e}")
     except Exception as e:
@@ -282,6 +284,7 @@ def main():
     display_on_time = 0
     display_on = True
     
+    toggle_display(True)
     pygame.mouse.set_visible(False)
 
     while True:
