@@ -163,7 +163,7 @@ def generate_graph():
 
     df = pd.DataFrame({
         'timestamp': timestamps,
-        'temperature': temperatures
+        'temperature': temperatures,
         'humidity': humidities
     })
 
