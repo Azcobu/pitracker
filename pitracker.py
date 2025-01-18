@@ -39,6 +39,7 @@ def read_sensor():
     
         # Read a line from the serial port
         line = ser.readline().decode('utf-8').strip()
+        print(f'{datetime.now().strftime("%H:%M:%S")} - Sensor returned: {line}')
         if line:
             try:
                 sernum, temp, humid, touch = line.split(',')
@@ -202,7 +203,6 @@ def main():
     last_csv_time = 0
     
     pygame.mouse.set_visible(False)
-    graph_path = "temperature_graph.png"
 
     while True:
         for event in pygame.event.get():
