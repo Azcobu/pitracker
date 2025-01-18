@@ -284,7 +284,6 @@ def main():
     display_on_time = 0
     display_on = True
     
-    toggle_display(True)
     pygame.mouse.set_visible(False)
 
     while True:
