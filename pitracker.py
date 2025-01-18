@@ -21,8 +21,8 @@ DISPLAY_HEIGHT = 480
 BACKGROUND_COLOR = (0, 0, 0)
 TEXT_COLOR = (255, 255, 255)
 UPDATE_INTERVAL = 5
-GRAPH_UPDATE_INTERVAL = 60
-CSV_WRITE_INTERVAL = 300  
+GRAPH_UPDATE_INTERVAL = 300
+CSV_WRITE_INTERVAL = 3600
 HOURS_TO_KEEP = 24
 
 pygame.init()
@@ -76,7 +76,6 @@ def prune_csv():
         writer.writerows(rows)
 
 def is_png(data: BytesIO) -> bool:
-    print(f"is_png check - BytesIO closed state: {data.closed}")  # Debug line
     try:
         png_signature = b'\x89PNG\r\n\x1a\n'
         data.seek(0)
@@ -85,7 +84,6 @@ def is_png(data: BytesIO) -> bool:
         return header == png_signature
     except Exception as err:
         print(f'Error checking BytesIO object - {err}')
-        print(f"After error - BytesIO closed state: {data.closed}")  # Debug line
         return False
 
 def get_temp_graph():
@@ -100,7 +98,6 @@ def display_temperature(current_temp):
     screen.fill(BACKGROUND_COLOR)
 
     # Display graph
-    print(f"Before is_png - BytesIO closed state: {temp_graph.closed}")
     if temp_graph and is_png(temp_graph):
         try:
             temp_graph.seek(0)
@@ -117,7 +114,10 @@ def display_temperature(current_temp):
         screen.blit(placeholder_text, (DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
 
     # Display current temperature
-    temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOR)
+    if isinstance(current_temp, (float, int)):
+        temp_text = font.render(f"{current_temp:.1f}°", True, TEXT_COLOR)
+    else:
+        temp_text = font.render("N/A", True, TEXT_COLOR)
     screen.blit(temp_text, (32, 32))
 
     pygame.display.flip()
