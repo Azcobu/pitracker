@@ -226,7 +226,8 @@ def generate_graph():
     temp_graph.seek(0)
     plt.close()
     '''
-def plot_temp_humidity(df):
+
+def plot_temp_humidity(df): 
     plt.figure(figsize=(10, 6), dpi=80)
     plt.style.use('dark_background')
 
@@ -237,17 +238,20 @@ def plot_temp_humidity(df):
     cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
     norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
     
-    # Convert timestamps and get data arrays
-    timestamps = mdates.date2num(df['timestamp'])
+    # Convert timestamps to numerical values for interpolation
+    timestamps_num = mdates.date2num(df['timestamp'])
     temperatures = df['temperature'].to_numpy()
     humidities = df['humidity'].to_numpy()
     
-    # Create gradient mesh using timestamps directly
+    # Create a regular grid of x (time) points
+    x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)  # Increase resolution
     y_points = np.linspace(0, 45, 500)
-    X, Y = np.meshgrid(timestamps, y_points)
     
-    # Interpolate temperatures to match X grid points
-    temp_interpolated = np.interp(X[0], timestamps, temperatures)
+    # Create the mesh grid using the regular x points
+    X, Y = np.meshgrid(x_points, y_points)
+    
+    # Interpolate temperatures for each x point in the grid
+    temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
     
     # Create mask for each vertical slice
     mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
@@ -257,9 +261,11 @@ def plot_temp_humidity(df):
     gradient_colours = cmap(Z)
     gradient_colours[mask] = (0, 0, 0, 0)  # Make masked areas transparent
 
-    # Plot gradient
-    plt.imshow(gradient_colours, extent=(timestamps[0], timestamps[-1], 0, 45), 
-              aspect='auto', origin='lower')
+    # Plot gradient using the numerical timestamps
+    plt.imshow(gradient_colours, 
+              extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
+              aspect='auto', 
+              origin='lower')
 
     # Plot temperature line
     plt.plot(df['timestamp'], temperatures, color='white', linewidth=2, label='Temperature')
