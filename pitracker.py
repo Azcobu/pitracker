@@ -260,13 +260,21 @@ def plot_temp_humidity(df):
     return fig
 
 def toggle_display(status):
+    """Toggle the HDMI display on or off."""
     mode = "on\n" if status else "off\n"
     try:
-        # Use the mode determined by the status
-        subprocess.run(["sudo", "tee", "/sys/class/drm/card0-HDMI-A-1/status"], input=mode, text=True)
+        # Write the mode directly to the file
+        subprocess.run(
+            ["tee", "/sys/class/drm/card0-HDMI-A-1/status"],
+            input=mode,
+            text=True,
+            check=True
+        )
         print(f"HDMI turned {'on' if status else 'off'}.")
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         print(f"Error toggling HDMI: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 def main():
     last_graph_time = 0
