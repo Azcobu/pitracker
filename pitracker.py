@@ -209,8 +209,8 @@ class PiTracker:
             padding = 20
             line1 = "Last 24 hours:"
             line2 = f"Max: {self.max_temp_past24}°, Avg: {self.avg_temp_past24}°, Min: {self.min_temp_past24}°"
-            line1_surface = self.small_font.render(line1, True, WHITE)
-            line2_surface = self.small_font.render(line2, True, WHITE)
+            line1_surface = self.small_font.render(line1, True, self.TEXT_COLOUR)
+            line2_surface = self.small_font.render(line2, True, self.TEXT_COLOUR)
 
             # Get text sizes
             line1_width, line1_height = line1_surface.get_size()
