@@ -348,11 +348,11 @@ class PiTracker:
             # Add second y-axis for humidity
             ax2 = ax1.twinx()
             ax2.plot(df['timestamp'], df['humidity'], color='blue', 
-                    linewidth=2, label='Humidity', alpha=0.8)
+                    linewidth=2) # label='Humidity', alpha=0.8
 
             # Configure axes
             ax1.grid(visible=True, which='major', color='gray', linestyle='--', 
-                    linewidth=0.5, alpha=0.5)
+                    linewidth=1, alpha=1)
             ax1.xaxis.set_major_locator(mdates.HourLocator())
             ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
             ax1.set_frame_on(False)
@@ -360,7 +360,7 @@ class PiTracker:
             ax1.set_ylim(0, 45)
             ax2.set_ylim(0, 100)
             ax2.tick_params(axis='y', labelcolor='blue')
-            ax2.set_ylabel('Humidity %', color='blue')
+            # ax2.set_ylabel('Humidity %', color='blue')
 
             plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
             plt.tight_layout()
