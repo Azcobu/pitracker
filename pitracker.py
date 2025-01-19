@@ -10,8 +10,10 @@ import time
 import subprocess
 import csv
 import os
+import logging
 from datetime import datetime, timedelta
 from io import BytesIO
+from typing import Optional, Tuple, Union, Dict
 import pygame
 import serial
 import matplotlib.pyplot as plt
@@ -20,330 +22,379 @@ import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
 
-SERIAL_PORT = '/dev/ttyACM0'  
-BAUD_RATE = 9600
+class SensorReadError(Exception):
+    """Custom exception for sensor read failures"""
+    pass
 
-CSV_FILE = "temperature_log.csv"
-DISPLAY_WIDTH = 800
-DISPLAY_HEIGHT = 480
-BACKGROUND_COLOUR = (0, 0, 0)
-TEXT_COLOUR = (255, 255, 255)
-TEXT2_COLOUR = (128,128, 255)
-UPDATE_INTERVAL = 5
-GRAPH_UPDATE_INTERVAL = 300
-CSV_WRITE_INTERVAL = 3600
-HOURS_TO_KEEP = 24
-SCREEN_TIMEOUT = 60
+class DataValidationError(Exception):
+    """Custom exception for data validation failures"""
+    pass
 
-pygame.init()
-screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
-TEMP_FONT = pygame.font.SysFont(None, 112)
-HUMID_FONT = pygame.font.SysFont(None, 48)
-SMALL_FONT = pygame.font.SysFont(None, 24)
-temp_graph = BytesIO() 
+class PiTracker:
+    SERIAL_PORT = '/dev/ttyACM0'
+    BAUD_RATE = 9600
+    CSV_FILE = "temperature_log.csv"
+    DISPLAY_WIDTH = 800
+    DISPLAY_HEIGHT = 480
+    BACKGROUND_COLOUR = (0, 0, 0)
+    TEXT_COLOUR = (255, 255, 255)
+    TEXT2_COLOUR = (128, 128, 255)
+    UPDATE_INTERVAL = 5
+    GRAPH_UPDATE_INTERVAL = 300
+    CSV_WRITE_INTERVAL = 3600
+    HOURS_TO_KEEP = 24
+    SCREEN_TIMEOUT = 60
 
-# In-memory buffer for temperature readings
-temp_buffer = []
+    def __init__(self):
+        # Set up logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler('pi_tracker.log'),
+                logging.StreamHandler()
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
+        
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
+        self.temp_font = pygame.font.SysFont(None, 112)
+        self.humid_font = pygame.font.SysFont(None, 48)
+        self.small_font = pygame.font.SysFont(None, 24)
+        self.temp_graph = BytesIO()
+        self.temp_buffer = []
+        self.max_temp_past24 = 0.0
+        self.avg_temp_past24 = 0.0
+        self.min_temp_past24 = 0.0
+        
+        # Cache for rendered text
+        self._text_cache: Dict[str, pygame.Surface] = {}
+        
+        pygame.mouse.set_visible(False)
+        self.logger.info("PiTracker initialized")
 
-max_temp_past24 = 0.0
-avg_temp_past24 = 0.0
-min_temp_past24 = 0.0
-
-def read_sensor():
-    """Reads the current data from the sensor via the serial connection."""
-    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
-    
-        # Read a line from the serial port
-        line = ser.readline().decode('utf-8').strip()
-        #print(f'{datetime.now().strftime("%H:%M:%S")} - Sensor returned: {line}')
-        if line:
-            try:
+    def read_sensor(self) -> Optional[Tuple[float, float, float]]:
+        """
+        Reads the current data from the sensor via the serial connection.
+        Returns tuple of (temperature, humidity, touch) or raises SensorReadError
+        """
+        try:
+            with serial.Serial(self.SERIAL_PORT, self.BAUD_RATE, timeout=1) as ser:
+                line = ser.readline().decode('utf-8').strip()
+                if not line:
+                    raise SensorReadError("No data received from sensor")
+                
                 _, temp, humid, touch = line.split(',')
                 return float(temp), float(humid), float(touch)
-            except Exception as err:
-                print(f'{err} - returned output was {line}')
-                return None
-            
-def write_csv_from_buffer():
-    """Writes buffered temperatures to the CSV file and prunes old data."""
-    global temp_buffer
+                
+        except (serial.SerialException, serial.SerialTimeoutException) as e:
+            self.logger.error(f"Serial communication error: {e}")
+            raise SensorReadError(f"Serial communication failed: {e}")
+        except ValueError as e:
+            self.logger.error(f"Invalid sensor data format: {line}")
+            raise SensorReadError(f"Invalid sensor data: {e}")
 
-    # Write buffered data to CSV
-    with open(CSV_FILE, "a", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerows(temp_buffer)
+    def write_csv_from_buffer(self) -> None:
+        """Writes buffered temperatures to the CSV file and prunes old data."""
+        if not self.temp_buffer:
+            self.logger.info("No data in buffer to write")
+            return
 
-    # Clear the buffer
-    temp_buffer = []
-
-    # Prune entries older than 24 hours
-    prune_csv()
-
-def prune_csv():
-    """Keeps only the last 24 hours of data in the CSV file."""
-    cutoff = datetime.now() - timedelta(hours=HOURS_TO_KEEP)
-    rows = []
-
-    with open(CSV_FILE, "r") as file:
-        reader = csv.reader(file)
-        rows = [row for row in reader if datetime.fromisoformat(row[0]) > cutoff]
-
-    with open(CSV_FILE, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerows(rows)
-
-def is_png(data: BytesIO) -> bool:
-    try:
-        png_signature = b'\x89PNG\r\n\x1a\n'
-        data.seek(0)
-        header = data.read(8)  
-        data.seek(0) 
-        return header == png_signature
-    except Exception as err:
-        print(f'Error checking BytesIO object - {err}')
-        return False
-
-def get_temp_graph():
-    global temp_graph
-    if temp_graph is None or temp_graph.closed:
-        temp_graph = BytesIO()
-    return temp_graph
-
-def nice_round(innum): 
-    innum = str(round(innum, 1))
-    if innum.endswith('.0'):
-        return innum[:-2]
-    else:
-        return innum
-
-def display_temperature(current_temp, current_humid):
-    """Updates the Pygame display with the current temperature and graph."""
-    global temp_graph
-    left_margin = 52
-
-    screen.fill(BACKGROUND_COLOUR)
-    
-    # Display graph
-    if temp_graph and is_png(temp_graph):
         try:
-            temp_graph.seek(0)
-            # Create a copy of the data for pygame to use
-            temp_data = BytesIO(temp_graph.getvalue())
-            graph_image = pygame.image.load(temp_data, 'png')
-            graph_rect = graph_image.get_rect(center=(DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
-            screen.blit(graph_image, graph_rect)
-        except Exception as err:
-            print(f'Error loading graph: {err}')
-            print(type(temp_graph))
-    else:
-        placeholder_text = TEMP_FONT.render("Graph not available", True, TEXT_COLOUR)
-        screen.blit(placeholder_text, (20, DISPLAY_HEIGHT // 2))
+            with open(self.CSV_FILE, "a", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerows(self.temp_buffer)
+            
+            self.temp_buffer = []
+            self.prune_csv()
+            self.logger.info(f"Successfully wrote buffer to CSV and pruned old data")
+            
+        except IOError as e:
+            self.logger.error(f"Failed to write to CSV file: {e}")
+            raise
 
-    # Display current temperature
-    if isinstance(current_temp, (float, int)):
-        formatted_temp = nice_round(current_temp)
-        temp_text = TEMP_FONT.render(f"{formatted_temp}°", True, TEXT_COLOUR)
-    else:
-        temp_text = TEMP_FONT.render("N/A", True, TEXT_COLOUR)
-    screen.blit(temp_text, (left_margin, 32))
+    def prune_csv(self) -> None:
+        """Keeps only the last 24 hours of data in the CSV file."""
+        cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
+        
+        try:
+            # Read existing data
+            with open(self.CSV_FILE, "r") as file:
+                reader = csv.reader(file)
+                rows = [row for row in reader if datetime.fromisoformat(row[0]) > cutoff]
 
-    # Display current humidity
+            # Write filtered data back
+            with open(self.CSV_FILE, "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerows(rows)
+                
+            self.logger.info(f"Pruned CSV file to last {self.HOURS_TO_KEEP} hours")
+            
+        except IOError as e:
+            self.logger.error(f"Failed to prune CSV file: {e}")
+            raise
 
-    if isinstance(current_humid, (float, int)):
-        formatted_humid = nice_round(current_humid)
-        temp_humid = HUMID_FONT.render(f"{formatted_humid}%", True, TEXT2_COLOUR)
-    else:
-        temp_humid = HUMID_FONT.render("N/A", True, TEXT2_COLOUR)
-    screen.blit(temp_humid, (left_margin, 110))
+    @staticmethod
+    def is_png(data: BytesIO) -> bool:
+        """Verify if BytesIO contains PNG data."""
+        try:
+            png_signature = b'\x89PNG\r\n\x1a\n'
+            data.seek(0)
+            header = data.read(8)
+            data.seek(0)
+            return header == png_signature
+        except Exception as e:
+            logging.error(f"Error checking PNG format: {e}")
+            return False
 
-    pygame.display.flip()
+    def get_temp_graph(self) -> BytesIO:
+        """Get the temperature graph BytesIO object, creating if necessary."""
+        if self.temp_graph is None or self.temp_graph.closed:
+            self.temp_graph = BytesIO()
+        return self.temp_graph
 
-def generate_graph():
-    """Generates a graph from the last 24 hours of temperature data."""
-    global temp_graph
-    timestamps, temperatures, humidities = [], [], []
-    cutoff = datetime.now() - timedelta(hours=HOURS_TO_KEEP)
+    @staticmethod
+    def nice_round(innum: float) -> str:
+        """Format number to string, removing trailing .0 if present."""
+        innum = str(round(innum, 1))
+        return innum[:-2] if innum.endswith('.0') else innum
 
-    if os.path.exists(CSV_FILE):
-        with open(CSV_FILE, "r") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                if datetime.fromisoformat(row[0]) > cutoff:
-                    timestamps.append(datetime.fromisoformat(row[0]))
-                    temperatures.append(float(row[1]))
-                    humidities.append(float(row[2]))
+    def get_cached_text(self, text: str, font: pygame.font.Font, color: Tuple[int, int, int]) -> pygame.Surface:
+        """Get cached text surface or render and cache if not exists."""
+        cache_key = f"{text}{font.get_height()}{color}"
+        if cache_key not in self._text_cache:
+            self._text_cache[cache_key] = font.render(text, True, color)
+        return self._text_cache[cache_key]
 
-    # Add data from the in-memory buffer
-    for timestamp, temp, humid in temp_buffer:
-        timestamps.append(datetime.fromisoformat(timestamp))
-        temperatures.append(temp)
-        humidities.append(humid)
+    def display_temperature(self, current_temp: Union[float, str], current_humid: Union[float, str]) -> None:
+        """Updates the Pygame display with the current temperature and graph."""
+        try:
+            left_margin = 52
+            self.screen.fill(self.BACKGROUND_COLOUR)
 
-    if not timestamps or not temperatures:
-        print("Can't generate graph - no data available")
-        return
+            # Display graph
+            if self.temp_graph and self.is_png(self.temp_graph):
+                try:
+                    self.temp_graph.seek(0)
+                    temp_data = BytesIO(self.temp_graph.getvalue())
+                    graph_image = pygame.image.load(temp_data, 'png')
+                    graph_rect = graph_image.get_rect(center=(self.DISPLAY_WIDTH // 2, self.DISPLAY_HEIGHT // 2))
+                    self.screen.blit(graph_image, graph_rect)
+                except Exception as e:
+                    self.logger.error(f"Error loading graph: {e}")
+                    placeholder_text = self.get_cached_text("Graph load error", self.temp_font, self.TEXT_COLOUR)
+                    self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
+            else:
+                placeholder_text = self.get_cached_text("Graph not available", self.temp_font, self.TEXT_COLOUR)
+                self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
 
-    # Sort the data by timestamp
-    combined_data = sorted(zip(timestamps, temperatures, humidities), key=lambda x: x[0])
-    timestamps, temperatures, humidities = zip(*combined_data)
+            # Display temperature
+            if isinstance(current_temp, (float, int)):
+                formatted_temp = self.nice_round(current_temp)
+                temp_text = self.temp_font.render(f"{formatted_temp}°", True, self.TEXT_COLOUR)
+            else:
+                temp_text = self.get_cached_text("N/A", self.temp_font, self.TEXT_COLOUR)
+            self.screen.blit(temp_text, (left_margin, 32))
 
-    df = pd.DataFrame({
-        'timestamp': timestamps,
-        'temperature': temperatures,
-        'humidity': humidities
-    })
+            # Display humidity
+            if isinstance(current_humid, (float, int)):
+                formatted_humid = self.nice_round(current_humid)
+                humid_text = self.humid_font.render(f"{formatted_humid}%", True, self.TEXT2_COLOUR)
+            else:
+                humid_text = self.get_cached_text("N/A", self.humid_font, self.TEXT2_COLOUR)
+            self.screen.blit(humid_text, (left_margin, 110))
 
-    fig = plot_temp_humidity(df)
-    temp_graph = get_temp_graph()
-    temp_graph.seek(0)
-    temp_graph.truncate(0)
-    plt.savefig(temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
-    temp_graph.seek(0)
-    plt.close()
+            pygame.display.flip()
+        except pygame.error as e:
+            self.logger.error(f"Error updating display: {e}")
 
-def plot_temp_humidity(df):
-    fig = plt.figure(figsize=(10, 6), dpi=80)
-    plt.style.use('dark_background')
-    
-    # Get the main axis
-    ax1 = plt.gca()
+    def validate_data(self, df: pd.DataFrame) -> None:
+        """Validate dataframe structure and content."""
+        required_columns = {'timestamp', 'temperature', 'humidity'}
+        if not all(col in df.columns for col in required_columns):
+            raise DataValidationError("Missing required columns in dataframe")
+        
+        if df.empty:
+            raise DataValidationError("No data available for plotting")
+        
+        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            raise DataValidationError("Timestamp column must be datetime type")
 
-    # Define the temperature range and colours
-    temperature_range = [0, 15, 25, 30, 40, 45]  
-    colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+    def generate_graph(self) -> None:
+        """Generates a graph from the last 24 hours of temperature data."""
+        try:
+            timestamps, temperatures, humidities = [], [], []
+            cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
 
-    cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
-    norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
-    
-    # Convert timestamps to numerical values for interpolation
-    timestamps_num = mdates.date2num(df['timestamp'])
-    temperatures = df['temperature'].to_numpy()
-    humidities = df['humidity'].to_numpy()
-    
-    # Create a regular grid of x (time) points
-    x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
-    y_points = np.linspace(0, 45, 500)
-    
-    # Create the mesh grid using the regular x points
-    X, Y = np.meshgrid(x_points, y_points)
-    
-    # Interpolate temperatures for each x point in the grid
-    temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
-    
-    # Create mask for each vertical slice
-    mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
-    
-    # Create gradient colors
-    Z = norm(Y)
-    gradient_colours = cmap(Z)
-    gradient_colours[mask] = (0, 0, 0, 0)
+            if os.path.exists(self.CSV_FILE):
+                with open(self.CSV_FILE, "r") as file:
+                    reader = csv.reader(file)
+                    for row in reader:
+                        if datetime.fromisoformat(row[0]) > cutoff:
+                            timestamps.append(datetime.fromisoformat(row[0]))
+                            temperatures.append(float(row[1]))
+                            humidities.append(float(row[2]))
 
-    # Plot gradient using the numerical timestamps
-    ax1.imshow(gradient_colours, 
-              extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
-              aspect='auto', 
-              origin='lower')
+            # Add data from the in-memory buffer
+            for timestamp, temp, humid in self.temp_buffer:
+                timestamps.append(datetime.fromisoformat(timestamp))
+                temperatures.append(temp)
+                humidities.append(humid)
 
-    # Plot temperature line
-    temp_line = ax1.plot(df['timestamp'], temperatures, color='white', 
-                        linewidth=2, label='Temperature')[0]
-    
-    # Add second y-axis for humidity
-    ax2 = ax1.twinx()
-    
-    # Plot humidity line on second axis (no scaling needed as axis handles it)
-    humidity_line = ax2.plot(df['timestamp'], humidities, color='blue', 
-                           linewidth=2, label='Humidity', alpha=0.8)[0]
-
-    # Grid and formatting
-    ax1.grid(visible=True, which='major', color='gray', linestyle='--', 
-            linewidth=0.5, alpha=0.5)
-    ax1.xaxis.set_major_locator(mdates.HourLocator())
-    ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
-    ax1.set_frame_on(False)
-
-    # Configure axes ranges and labels
-    ax1.set_ylim(0, 45)  # Temperature range
-    ax2.set_ylim(0, 100)  # Humidity percentage range
-    ax2.tick_params(axis='y', labelcolor='blue')
-    ax2.set_ylabel('Humidity %', color='blue')
-
-    plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
-    plt.tight_layout()
-
-    return fig
-
-import time
-
-def toggle_display(status):
-    """Toggle the HDMI display on or off."""
-    mode = "on\n" if status else "off\n"
-    try:
-        with open("/sys/class/drm/card0-HDMI-A-1/status", "w") as f:
-            f.write(mode)
-            f.flush()
-            os.fsync(f.fileno())
-        time.sleep(0.1)  # Small delay to let system process the change
-        print(f"HDMI turned {'on' if status else 'off'}.")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-
-def main():
-    last_graph_time = 0
-    last_csv_time = 0
-    display_on_time = 0
-    display_on = True
-    
-    pygame.mouse.set_visible(False)
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+            if not timestamps or not temperatures:
+                self.logger.warning("No data available for graph generation")
                 return
 
-        now_timestamp = int(time.time())
-        current_temp, current_humid, current_touch = None, None, None
+            # Sort the data by timestamp
+            combined_data = sorted(zip(timestamps, temperatures, humidities), key=lambda x: x[0])
+            timestamps, temperatures, humidities = zip(*combined_data)
 
-        if datetime.now().second % 5 == 0:
-            # Read current temperature
-            sensor_return = read_sensor()
-            if sensor_return and len(sensor_return) == 3:
-                current_temp, current_humid, current_touch = sensor_return
+            df = pd.DataFrame({
+                'timestamp': timestamps,
+                'temperature': temperatures,
+                'humidity': humidities
+            })
 
-            display_temperature(current_temp if current_temp is not None else 'N/A',\
-                                current_humid if current_humid is not None else 'N/A')
+            self.validate_data(df)
+            self.plot_temp_humidity(df)
+            
+            # Update the graph buffer
+            self.temp_graph = self.get_temp_graph()
+            self.temp_graph.seek(0)
+            self.temp_graph.truncate(0)
+            plt.savefig(self.temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
+            self.temp_graph.seek(0)
+            plt.close()
+            
+            self.logger.info("Graph generated successfully")
+            
+        except (IOError, DataValidationError) as e:
+            self.logger.error(f"Error generating graph: {e}")
+            raise
 
-        if now_timestamp - last_graph_time >= GRAPH_UPDATE_INTERVAL:
-            if current_temp is not None:
+    def create_temperature_gradient(self, df: pd.DataFrame, timestamps_num: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Create the temperature gradient for the plot."""
+        temperatures = df['temperature'].to_numpy()
+        x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
+        y_points = np.linspace(0, 45, 500)
+        
+        X, Y = np.meshgrid(x_points, y_points)
+        temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
+        mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
+        
+        return X, Y, mask, temp_interpolated
+
+    def plot_temp_humidity(self, df: pd.DataFrame) -> None:
+        """Plot temperature and humidity data with gradient background."""
+        try:
+            fig = plt.figure(figsize=(10, 6), dpi=80)
+            plt.style.use('dark_background')
+            
+            ax1 = plt.gca()
+            temperature_range = [0, 15, 25, 30, 40, 45]
+            colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+
+            cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
+            norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
+            
+            timestamps_num = mdates.date2num(df['timestamp'])
+            _, Y, mask, _ = self.create_temperature_gradient(df, timestamps_num)
+            
+            Z = norm(Y)
+            gradient_colours = cmap(Z)
+            gradient_colours[mask] = (0, 0, 0, 0)
+
+            ax1.imshow(gradient_colours, 
+                      extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
+                      aspect='auto', 
+                      origin='lower')
+
+            # Plot temperature line
+            ax1.plot(df['timestamp'], df['temperature'], color='white', 
+                    linewidth=2, label='Temperature')
+            
+            # Add second y-axis for humidity
+            ax2 = ax1.twinx()
+            ax2.plot(df['timestamp'], df['humidity'], color='blue', 
+                    linewidth=2, label='Humidity', alpha=0.8)
+
+            # Configure axes
+            ax1.grid(visible=True, which='major', color='gray', linestyle='--', 
+                    linewidth=0.5, alpha=0.5)
+            ax1.xaxis.set_major_locator(mdates.HourLocator())
+            ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
+            ax1.set_frame_on(False)
+
+            ax1.set_ylim(0, 45)
+            ax2.set_ylim(0, 100)
+            ax2.tick_params(axis='y', labelcolor='blue')
+            ax2.set_ylabel('Humidity %', color='blue')
+
+            plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
+            plt.tight_layout()
+
+        except Exception as e:
+            self.logger.error(f"Error plotting temperature/humidity: {e}")
+            raise
+
+    def cleanup(self) -> None:
+        """Clean up resources before shutdown"""
+        try:
+            pygame.quit()
+            # Don't close temp_graph here as it might be in use
+            self._text_cache.clear()
+            self.logger.info("Cleanup completed successfully")
+        except Exception as e:
+            self.logger.error(f"Error during cleanup: {e}")
+
+    def run(self) -> None:
+        last_graph_time = 0
+        last_csv_time = 0
+        
+        try:
+            while True:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        raise KeyboardInterrupt
                 
-                print(f'{datetime.now().strftime("%H:%M:%S")} - generating new graph...')
-                temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
-                generate_graph()
-                last_graph_time = time.time()
+                now_timestamp = int(time.time())
+                current_temp, current_humid, current_touch = None, None, None
 
-        if now_timestamp - last_csv_time >= CSV_WRITE_INTERVAL:
-            print(f'{datetime.now().strftime("%H:%M:%S")} - writing to CSV...')
-            write_csv_from_buffer()
-            prune_csv()
-            last_csv_time = time.time()
+                if datetime.now().second % 5 == 0:
+                    try:
+                        sensor_data = self.read_sensor()
+                        if sensor_data:
+                            current_temp, current_humid, current_touch = sensor_data
+                    except SensorReadError as e:
+                        self.logger.warning(f"Failed to read sensor: {e}")
 
-        '''
-        if current_touch and current_touch > 600:
-            if not display_on:
-                toggle_display(True)
-                display_on = True
-                display_on_time = 0
+                    self.display_temperature(
+                        current_temp if current_temp is not None else 'N/A',
+                        current_humid if current_humid is not None else 'N/A'
+                    )
 
-        if display_on:
-            display_on_time += 1
-            if display_on_time >= SCREEN_TIMEOUT:
-                toggle_display(False)
-                display_on = False
-                display_on_time = 0
-        '''
+                if now_timestamp - last_graph_time >= self.GRAPH_UPDATE_INTERVAL:
+                    if current_temp is not None:
+                        self.logger.info("Generating new graph...")
+                        self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
+                        self.generate_graph()
+                        last_graph_time = time.time()
 
-        time.sleep(1)
+                if now_timestamp - last_csv_time >= self.CSV_WRITE_INTERVAL:
+                    self.logger.info("Writing to CSV...")
+                    self.write_csv_from_buffer()
+                    last_csv_time = time.time()
+
+                time.sleep(1)
+                
+        except KeyboardInterrupt:
+            self.logger.info("Received shutdown signal")
+        except Exception as e:
+            self.logger.error(f"Unexpected error in main loop: {e}")
+        finally:
+            self.cleanup()
 
 if __name__ == "__main__":
-    main()
+    tracker = PiTracker()
+    tracker.run()
