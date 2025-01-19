@@ -1,9 +1,9 @@
 # To do:
-# Avg and hottest temp last 24 hours?
+# Avg and hottest temp last 24 hours? - done
 # outline temp numbers for better visibility
 # cache rendered font outlines in dict to avoid re-rendering - use function attribute
 # at midnight get stats for the day - high, avg, for longterm use?
-# make graph properly 24 hrs, not 24 hrs + up to another hr in temp buffer
+# make graph properly 24 hrs, not 24 hrs + up to another hr in temp buffer - done
 # get display timeout working with touch sensor
 
 import time
@@ -206,9 +206,12 @@ class PiTracker:
             self.screen.blit(humid_text, (left_margin, 110))
 
             # Display smaller stats
-            xpad, ypad = 70, 30
+            xpad, ypad = 65, 30
             line1 = "Last 24 hours:"
-            line2 = f"Max: {self.max_temp_past24}°, Avg: {self.avg_temp_past24}°, Min: {self.min_temp_past24}°"
+            max_t = self.nice_round(self.max_temp_past24)
+            avg_t = self.nice_round(self.avg_temp_past24)
+            min_t = self.nice_round(self.min_temp_past24)
+            line2 = f"Max: {max_t}°, Avg: {avg_t}°, Min: {min_t}°"
             line1_surface = self.small_font.render(line1, True, self.TEXT_COLOUR)
             line2_surface = self.small_font.render(line2, True, self.TEXT_COLOUR)
 
@@ -242,9 +245,9 @@ class PiTracker:
             raise DataValidationError("Timestamp column must be datetime type")
 
     def generate_stats(self, temps: list) -> None:
-        self.max_temp_past24 = self.nice_round(max(temps))
-        self.avg_temp_past24 = self.nice_round(sum(temps) / len(temps))
-        self.min_temp_past24 = self.nice_round(min(temps))
+        self.max_temp_past24 = max(temps)
+        self.avg_temp_past24 = sum(temps) / len(temps)
+        self.min_temp_past24 = min(temps)
 
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
@@ -401,6 +404,14 @@ class PiTracker:
                         current_temp if current_temp is not None else 'N/A',
                         current_humid if current_humid is not None else 'N/A'
                     )
+
+                    if current_temp:
+                        if current_temp > self.max_temp_past24:
+                            self.max_temp_past24 = current_temp
+                            self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
+                        if current_temp < self.min_temp_past24:
+                            self.min_temp_past24 = current_temp
+                            self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
 
                 if now_timestamp - last_graph_time >= self.GRAPH_UPDATE_INTERVAL:
                     if current_temp is not None:
