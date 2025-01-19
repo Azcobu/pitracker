@@ -222,8 +222,8 @@ class PiTracker:
             line2_x = self.DISPLAY_WIDTH - padding - line2_width
             line2_y = line1_y + line1_height + 5  # Slight gap between lines
 
-            screen.blit(line1_surface, (line1_x, line1_y))
-            screen.blit(line2_surface, (line2_x, line2_y))
+            self.screen.blit(line1_surface, (line1_x, line1_y))
+            self.screen.blit(line2_surface, (line2_x, line2_y))
 
             pygame.display.flip()
         except pygame.error as e:
