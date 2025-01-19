@@ -24,11 +24,9 @@ import pandas as pd
 
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
-    pass
 
 class DataValidationError(Exception):
     """Custom exception for data validation failures"""
-    pass
 
 class PiTracker:
     SERIAL_PORT = '/dev/ttyACM0'
@@ -56,7 +54,7 @@ class PiTracker:
             ]
         )
         self.logger = logging.getLogger(__name__)
-        
+
         pygame.init()
         self.screen = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
         self.temp_font = pygame.font.SysFont(None, 112)
@@ -67,10 +65,10 @@ class PiTracker:
         self.max_temp_past24 = 0.0
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
-        
+
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
-        
+
         pygame.mouse.set_visible(False)
         self.logger.info("PiTracker initialized")
 
@@ -84,15 +82,15 @@ class PiTracker:
                 line = ser.readline().decode('utf-8').strip()
                 if not line:
                     raise SensorReadError("No data received from sensor")
-                
+
                 _, temp, humid, touch = line.split(',')
                 return float(temp), float(humid), float(touch)
-                
+
         except (serial.SerialException, serial.SerialTimeoutException) as e:
-            self.logger.error(f"Serial communication error: {e}")
+            self.logger.error("Serial communication error: %s", e)
             raise SensorReadError(f"Serial communication failed: {e}")
         except ValueError as e:
-            self.logger.error(f"Invalid sensor data format: {line}")
+            self.logger.error("Invalid sensor data format: %s", line)
             raise SensorReadError(f"Invalid sensor data: {e}")
 
     def write_csv_from_buffer(self) -> None:
@@ -102,37 +100,37 @@ class PiTracker:
             return
 
         try:
-            with open(self.CSV_FILE, "a", newline="") as file:
+            with open(self.CSV_FILE, "a", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerows(self.temp_buffer)
-            
+
             self.temp_buffer = []
             self.prune_csv()
-            self.logger.info(f"Successfully wrote buffer to CSV and pruned old data")
-            
+            self.logger.info("Successfully wrote buffer to CSV and pruned old data")
+
         except IOError as e:
-            self.logger.error(f"Failed to write to CSV file: {e}")
+            self.logger.error("Failed to write to CSV file: %s", e)
             raise
 
     def prune_csv(self) -> None:
         """Keeps only the last 24 hours of data in the CSV file."""
         cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
-        
+
         try:
             # Read existing data
-            with open(self.CSV_FILE, "r") as file:
+            with open(self.CSV_FILE, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 rows = [row for row in reader if datetime.fromisoformat(row[0]) > cutoff]
 
             # Write filtered data back
-            with open(self.CSV_FILE, "w", newline="") as file:
+            with open(self.CSV_FILE, "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerows(rows)
-                
-            self.logger.info(f"Pruned CSV file to last {self.HOURS_TO_KEEP} hours")
-            
+
+            self.logger.info("Pruned CSV file to last %s hours", self.HOURS_TO_KEEP)
+
         except IOError as e:
-            self.logger.error(f"Failed to prune CSV file: {e}")
+            self.logger.error("Failed to prune CSV file: %s", e)
             raise
 
     @staticmethod
@@ -145,7 +143,7 @@ class PiTracker:
             data.seek(0)
             return header == png_signature
         except Exception as e:
-            logging.error(f"Error checking PNG format: {e}")
+            logging.error("Error checking PNG format: %s", e)
             return False
 
     def get_temp_graph(self) -> BytesIO:
@@ -182,7 +180,7 @@ class PiTracker:
                     graph_rect = graph_image.get_rect(center=(self.DISPLAY_WIDTH // 2, self.DISPLAY_HEIGHT // 2))
                     self.screen.blit(graph_image, graph_rect)
                 except Exception as e:
-                    self.logger.error(f"Error loading graph: {e}")
+                    self.logger.error("Error loading graph: %s", e)
                     placeholder_text = self.get_cached_text("Graph load error", self.temp_font, self.TEXT_COLOUR)
                     self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
             else:
@@ -230,17 +228,17 @@ class PiTracker:
 
             pygame.display.flip()
         except pygame.error as e:
-            self.logger.error(f"Error updating display: {e}")
+            self.logger.error("Error updating display: %s", e)
 
     def validate_data(self, df: pd.DataFrame) -> None:
         """Validate dataframe structure and content."""
         required_columns = {'timestamp', 'temperature', 'humidity'}
         if not all(col in df.columns for col in required_columns):
             raise DataValidationError("Missing required columns in dataframe")
-        
+
         if df.empty:
             raise DataValidationError("No data available for plotting")
-        
+
         if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
             raise DataValidationError("Timestamp column must be datetime type")
 
@@ -256,7 +254,7 @@ class PiTracker:
             cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
 
             if os.path.exists(self.CSV_FILE):
-                with open(self.CSV_FILE, "r") as file:
+                with open(self.CSV_FILE, "r", encoding="utf-8") as file:
                     reader = csv.reader(file)
                     for row in reader:
                         if datetime.fromisoformat(row[0]) > cutoff:
@@ -274,7 +272,7 @@ class PiTracker:
                 self.logger.warning("No data available for graph generation")
                 return
 
-            if temperatures: 
+            if temperatures:
                 self.generate_stats(temperatures)
 
             # Sort the data by timestamp
@@ -289,7 +287,7 @@ class PiTracker:
 
             self.validate_data(df)
             self.plot_temp_humidity(df)
-            
+
             # Update the graph buffer
             self.temp_graph = self.get_temp_graph()
             self.temp_graph.seek(0)
@@ -297,11 +295,11 @@ class PiTracker:
             plt.savefig(self.temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
             self.temp_graph.seek(0)
             plt.close()
-            
+
             self.logger.info("Graph generated successfully")
-            
+
         except (IOError, DataValidationError) as e:
-            self.logger.error(f"Error generating graph: {e}")
+            self.logger.error("Error generating graph: %s", e)
             raise
 
     def create_temperature_gradient(self, df: pd.DataFrame, timestamps_num: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -309,11 +307,11 @@ class PiTracker:
         temperatures = df['temperature'].to_numpy()
         x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
         y_points = np.linspace(0, 45, 500)
-        
+
         X, Y = np.meshgrid(x_points, y_points)
         temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
         mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
-        
+
         return X, Y, mask, temp_interpolated
 
     def plot_temp_humidity(self, df: pd.DataFrame) -> None:
@@ -321,37 +319,37 @@ class PiTracker:
         try:
             fig = plt.figure(figsize=(10, 6), dpi=80)
             plt.style.use('dark_background')
-            
+
             ax1 = plt.gca()
             temperature_range = [0, 15, 25, 30, 40, 45]
             colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
 
             cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
             norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
-            
+
             timestamps_num = mdates.date2num(df['timestamp'])
             _, Y, mask, _ = self.create_temperature_gradient(df, timestamps_num)
-            
+
             Z = norm(Y)
             gradient_colours = cmap(Z)
             gradient_colours[mask] = (0, 0, 0, 0)
 
-            ax1.imshow(gradient_colours, 
-                      extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
-                      aspect='auto', 
+            ax1.imshow(gradient_colours,
+                      extent=(timestamps_num[0], timestamps_num[-1], 0, 45),
+                      aspect='auto',
                       origin='lower')
 
             # Plot temperature line
-            ax1.plot(df['timestamp'], df['temperature'], color='white', 
+            ax1.plot(df['timestamp'], df['temperature'], color='white',
                     linewidth=2, label='Temperature')
-            
+
             # Add second y-axis for humidity
             ax2 = ax1.twinx()
-            ax2.plot(df['timestamp'], df['humidity'], color='blue', 
+            ax2.plot(df['timestamp'], df['humidity'], color='blue',
                     linewidth=2) # label='Humidity', alpha=0.8
 
             # Configure axes
-            ax1.grid(visible=True, which='major', color='black', linestyle='-', 
+            ax1.grid(visible=True, which='major', color='black', linestyle='-',
                     linewidth=1, alpha=1)
             ax1.xaxis.set_major_locator(mdates.HourLocator())
             ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
@@ -366,7 +364,7 @@ class PiTracker:
             plt.tight_layout()
 
         except Exception as e:
-            self.logger.error(f"Error plotting temperature/humidity: {e}")
+            self.logger.error("Error plotting temperature/humidity: %s", e)
             raise
 
     def cleanup(self) -> None:
@@ -377,18 +375,18 @@ class PiTracker:
             self._text_cache.clear()
             self.logger.info("Cleanup completed successfully")
         except Exception as e:
-            self.logger.error(f"Error during cleanup: {e}")
+            self.logger.error("Error during cleanup: %s", e)
 
     def run(self) -> None:
         last_graph_time = 0
         last_csv_time = 0
-        
+
         try:
             while True:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         raise KeyboardInterrupt
-                
+
                 now_timestamp = int(time.time())
                 current_temp, current_humid, current_touch = None, None, None
 
@@ -398,7 +396,7 @@ class PiTracker:
                         if sensor_data:
                             current_temp, current_humid, current_touch = sensor_data
                     except SensorReadError as e:
-                        self.logger.warning(f"Failed to read sensor: {e}")
+                        self.logger.warning("Failed to read sensor: %s", e)
 
                     self.display_temperature(
                         current_temp if current_temp is not None else 'N/A',
@@ -426,11 +424,11 @@ class PiTracker:
                     last_csv_time = time.time()
 
                 time.sleep(1)
-                
+
         except KeyboardInterrupt:
             self.logger.info("Received shutdown signal")
         except Exception as e:
-            self.logger.error(f"Unexpected error in main loop: {e}")
+            self.logger.error("Unexpected error in main loop: %s", e)
         finally:
             self.cleanup()
 
