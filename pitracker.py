@@ -61,7 +61,7 @@ class PiTracker:
         self.screen = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
         self.temp_font = pygame.font.SysFont(None, 112)
         self.humid_font = pygame.font.SysFont(None, 48)
-        self.small_font = pygame.font.SysFont(None, 24)
+        self.small_font = pygame.font.SysFont(None, 28)
         self.temp_graph = BytesIO()
         self.temp_buffer = []
         self.max_temp_past24 = 0.0
@@ -170,7 +170,7 @@ class PiTracker:
     def display_temperature(self, current_temp: Union[float, str], current_humid: Union[float, str]) -> None:
         """Updates the Pygame display with the current temperature and graph."""
         try:
-            left_margin = 52
+            left_margin = 50
             self.screen.fill(self.BACKGROUND_COLOUR)
 
             # Display graph
@@ -206,7 +206,7 @@ class PiTracker:
             self.screen.blit(humid_text, (left_margin, 110))
 
             # Display smaller stats
-            padding = 20
+            xpad, ypad = 40, 30
             line1 = "Last 24 hours:"
             line2 = f"Max: {self.max_temp_past24}°, Avg: {self.avg_temp_past24}°, Min: {self.min_temp_past24}°"
             line1_surface = self.small_font.render(line1, True, self.TEXT_COLOUR)
@@ -217,9 +217,9 @@ class PiTracker:
             line2_width, line2_height = line2_surface.get_size()
 
             # Calculate positions for right-justified text
-            line1_x = self.DISPLAY_WIDTH - padding - line1_width
-            line1_y = padding
-            line2_x = self.DISPLAY_WIDTH - padding - line2_width
+            line1_x = self.DISPLAY_WIDTH - xpad - line1_width
+            line1_y = ypad
+            line2_x = self.DISPLAY_WIDTH - xpad - line2_width
             line2_y = line1_y + line1_height + 5  # Slight gap between lines
 
             self.screen.blit(line1_surface, (line1_x, line1_y))
