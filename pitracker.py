@@ -243,8 +243,8 @@ class PiTracker:
 
     def generate_stats(self, temps: list) -> None:
         self.max_temp_past24 = self.nice_round(max(temps))
-        self.avg_temp_past24 = self.nice_round(sum(temps) / len(temps), 1)
-        self.min_temp_past24 = self.nice_round(min(temps), 1)
+        self.avg_temp_past24 = self.nice_round(sum(temps) / len(temps))
+        self.min_temp_past24 = self.nice_round(min(temps))
 
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
