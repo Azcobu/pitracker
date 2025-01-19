@@ -205,6 +205,26 @@ class PiTracker:
                 humid_text = self.get_cached_text("N/A", self.humid_font, self.TEXT2_COLOUR)
             self.screen.blit(humid_text, (left_margin, 110))
 
+            # Display smaller stats
+            padding = 20
+            line1 = "Last 24 hours:"
+            line2 = f"Max: {self.max_temp_past24}°, Avg: {self.avg_temp_past24}°, Min: {self.min_temp_past24}°"
+            line1_surface = self.small_font.render(line1, True, WHITE)
+            line2_surface = self.small_font.render(line2, True, WHITE)
+
+            # Get text sizes
+            line1_width, line1_height = line1_surface.get_size()
+            line2_width, line2_height = line2_surface.get_size()
+
+            # Calculate positions for right-justified text
+            line1_x = self.DISPLAY_WIDTH - padding - line1_width
+            line1_y = padding
+            line2_x = self.DISPLAY_WIDTH - padding - line2_width
+            line2_y = line1_y + line1_height + 5  # Slight gap between lines
+
+            screen.blit(line1_surface, (line1_x, line1_y))
+            screen.blit(line2_surface, (line2_x, line2_y))
+
             pygame.display.flip()
         except pygame.error as e:
             self.logger.error(f"Error updating display: {e}")
@@ -220,6 +240,11 @@ class PiTracker:
         
         if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
             raise DataValidationError("Timestamp column must be datetime type")
+
+    def generate_stats(self, temps: list) -> None:
+        self.max_temp_past24 = round(max(temps), 1)
+        self.avg_temp_past24 = round(sum(temps) / len(temps), 1)
+        self.min_temp_past24 = round(min(temps), 1)
 
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
@@ -245,6 +270,9 @@ class PiTracker:
             if not timestamps or not temperatures:
                 self.logger.warning("No data available for graph generation")
                 return
+
+            if temperatures: 
+                self.generate_stats(temperatures)
 
             # Sort the data by timestamp
             combined_data = sorted(zip(timestamps, temperatures, humidities), key=lambda x: x[0])
