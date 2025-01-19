@@ -206,7 +206,7 @@ class PiTracker:
             self.screen.blit(humid_text, (left_margin, 110))
 
             # Display smaller stats
-            xpad, ypad = 40, 30
+            xpad, ypad = 70, 30
             line1 = "Last 24 hours:"
             line2 = f"Max: {self.max_temp_past24}°, Avg: {self.avg_temp_past24}°, Min: {self.min_temp_past24}°"
             line1_surface = self.small_font.render(line1, True, self.TEXT_COLOUR)
@@ -242,9 +242,9 @@ class PiTracker:
             raise DataValidationError("Timestamp column must be datetime type")
 
     def generate_stats(self, temps: list) -> None:
-        self.max_temp_past24 = round(max(temps), 1)
-        self.avg_temp_past24 = round(sum(temps) / len(temps), 1)
-        self.min_temp_past24 = round(min(temps), 1)
+        self.max_temp_past24 = self.nice_round(max(temps))
+        self.avg_temp_past24 = self.nice_round(sum(temps) / len(temps), 1)
+        self.min_temp_past24 = self.nice_round(min(temps), 1)
 
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
