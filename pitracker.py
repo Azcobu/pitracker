@@ -206,7 +206,7 @@ class PiTracker:
             self.screen.blit(humid_text, (left_margin, 110))
 
             # Display smaller stats
-            xpad, ypad = 65, 30
+            xpad, ypad = 50, 30
             line1 = "Last 24 hours:"
             max_t = self.nice_round(self.max_temp_past24)
             avg_t = self.nice_round(self.avg_temp_past24)
@@ -351,7 +351,7 @@ class PiTracker:
                     linewidth=2) # label='Humidity', alpha=0.8
 
             # Configure axes
-            ax1.grid(visible=True, which='major', color='gray', linestyle='--', 
+            ax1.grid(visible=True, which='major', color='black', linestyle='-', 
                     linewidth=1, alpha=1)
             ax1.xaxis.set_major_locator(mdates.HourLocator())
             ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
