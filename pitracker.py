@@ -1,3 +1,11 @@
+# To do:
+# Avg and hottest temp last 24 hours?
+# outline temp numbers for better visibility
+# cache rendered font outlines in dict to avoid re-rendering - use function attribute
+# at midnight get stats for the day - high, avg, for longterm use?
+# make graph properly 24 hrs, not 24 hrs + up to another hr in temp buffer
+# get display timeout working with touch sensor
+
 import time
 import subprocess
 import csv
@@ -29,12 +37,17 @@ SCREEN_TIMEOUT = 60
 
 pygame.init()
 screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
-font = pygame.font.SysFont(None, 112)
-font2 = pygame.font.SysFont(None, 48)
+TEMP_FONT = pygame.font.SysFont(None, 112)
+HUMID_FONT = pygame.font.SysFont(None, 48)
+SMALL_FONT = pygame.font.SysFont(None, 24)
 temp_graph = BytesIO() 
 
 # In-memory buffer for temperature readings
 temp_buffer = []
+
+max_temp_past24 = 0.0
+avg_temp_past24 = 0.0
+min_temp_past24 = 0.0
 
 def read_sensor():
     """Reads the current data from the sensor via the serial connection."""
@@ -106,7 +119,7 @@ def nice_round(innum):
 def display_temperature(current_temp, current_humid):
     """Updates the Pygame display with the current temperature and graph."""
     global temp_graph
-    left_margin = 55
+    left_margin = 52
 
     screen.fill(BACKGROUND_COLOUR)
     
@@ -123,24 +136,24 @@ def display_temperature(current_temp, current_humid):
             print(f'Error loading graph: {err}')
             print(type(temp_graph))
     else:
-        placeholder_text = font.render("Graph not available", True, TEXT_COLOUR)
-        screen.blit(placeholder_text, (DISPLAY_WIDTH // 2, DISPLAY_HEIGHT // 2))
+        placeholder_text = TEMP_FONT.render("Graph not available", True, TEXT_COLOUR)
+        screen.blit(placeholder_text, (20, DISPLAY_HEIGHT // 2))
 
     # Display current temperature
     if isinstance(current_temp, (float, int)):
         formatted_temp = nice_round(current_temp)
-        temp_text = font.render(f"{formatted_temp}°", True, TEXT_COLOUR)
+        temp_text = TEMP_FONT.render(f"{formatted_temp}°", True, TEXT_COLOUR)
     else:
-        temp_text = font.render("N/A", True, TEXT_COLOUR)
+        temp_text = TEMP_FONT.render("N/A", True, TEXT_COLOUR)
     screen.blit(temp_text, (left_margin, 32))
 
     # Display current humidity
 
     if isinstance(current_humid, (float, int)):
         formatted_humid = nice_round(current_humid)
-        temp_humid = font2.render(f"{formatted_humid}%", True, TEXT2_COLOUR)
+        temp_humid = HUMID_FONT.render(f"{formatted_humid}%", True, TEXT2_COLOUR)
     else:
-        temp_humid = font2.render("N/A", True, TEXT2_COLOUR)
+        temp_humid = HUMID_FONT.render("N/A", True, TEXT2_COLOUR)
     screen.blit(temp_humid, (left_margin, 110))
 
     pygame.display.flip()
@@ -148,16 +161,17 @@ def display_temperature(current_temp, current_humid):
 def generate_graph():
     """Generates a graph from the last 24 hours of temperature data."""
     global temp_graph
-
     timestamps, temperatures, humidities = [], [], []
+    cutoff = datetime.now() - timedelta(hours=HOURS_TO_KEEP)
 
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "r") as file:
             reader = csv.reader(file)
             for row in reader:
-                timestamps.append(datetime.fromisoformat(row[0]))
-                temperatures.append(float(row[1]))
-                humidities.append(float(row[2]))
+                if datetime.fromisoformat(row[0]) > cutoff:
+                    timestamps.append(datetime.fromisoformat(row[0]))
+                    temperatures.append(float(row[1]))
+                    humidities.append(float(row[2]))
 
     # Add data from the in-memory buffer
     for timestamp, temp, humid in temp_buffer:
@@ -314,6 +328,7 @@ def main():
             prune_csv()
             last_csv_time = time.time()
 
+        '''
         if current_touch and current_touch > 600:
             if not display_on:
                 toggle_display(True)
@@ -326,6 +341,7 @@ def main():
                 toggle_display(False)
                 display_on = False
                 display_on_time = 0
+        '''
 
         time.sleep(1)
 
