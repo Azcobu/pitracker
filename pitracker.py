@@ -78,7 +78,7 @@ class PiTracker:
 
     def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
-        Reads the current data from the sensor via the serial connection.
+        Reads the current data from the SHT41 sensor via the serial connection.
         Returns tuple of (temperature, humidity, touch) or raises SensorReadError
         """
         try:
@@ -98,6 +98,10 @@ class PiTracker:
             raise SensorReadError(f"Invalid sensor data: {e}")
 
     def read_sensor_dht22(self) -> Optional[Tuple[float, float]]:
+        """
+        Reads the current data from the DHT22 sensor via the GPIO pins.
+        Returns tuple of (temperature, humidity) or raises SensorReadError
+        """
         try:
             temperature = self.dht_sensor.temperature
             humidity = self.dht_sensor.humidity
@@ -105,19 +109,12 @@ class PiTracker:
             if temperature is not None and humidity is not None:
                 return temperature, humidity
             else:
-                print("Failed to retrieve data from sensor. Trying again...")
+                self.logger.error("Failed to retrieve data from DHT22 sensor.")
 
         except RuntimeError as error:
             # Handle occasional sensor read errors
-            self.logger.error(f" DHT22 aensor error: {error}")
-            raise SensorReadError(f"DHT22 sensor error: {e}")
-
-                try:
-        temperature_c = dht_device.temperature
-        if temperature_c is not None:
-            return temperature_c
-    except Exception as err:
-        print(f'DHT22 error:{err}')
+            self.logger.error(f" DHT22 sensor error: {error}")
+            raise SensorReadError(f"DHT22 sensor runtime error: {e}")
 
     def write_csv_from_buffer(self) -> None:
         """Writes buffered temperatures to the CSV file and prunes old data."""
@@ -418,9 +415,16 @@ class PiTracker:
 
                 if datetime.now().second % 5 == 0:
                     try:
+                        '''
+                        # SHT41
                         sensor_data = self.read_sensor_sht41()
                         if sensor_data:
                             current_temp, current_humid, current_touch = sensor_data
+                        '''
+                        sensor_data = self.read_sensor_dht22()
+                        if sensor_data:
+                            current_temp, current_humid = sensor_data
+
                     except SensorReadError as e:
                         self.logger.warning("Failed to read sensor: %s", e)
 
