@@ -21,7 +21,7 @@ def read_sht41():
             _, temp, humid, touch = line.split(',')
             return float(temp)
 
-    except Exception as err::
+    except Exception as err:
         print(f'SHT41 error:{err}')
         return 'N/A'
 
