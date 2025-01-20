@@ -68,7 +68,7 @@ class PiTracker:
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
 
-        dht_device = adafruit_dht.DHT22(board.D4)
+        dht_sensor = adafruit_dht.DHT22(board.D4)
 
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
