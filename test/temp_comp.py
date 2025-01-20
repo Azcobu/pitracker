@@ -34,7 +34,7 @@ def main():
         try:
             dht_temp = read_dht22()
             sht_temp = read_sht41()
-            if dht_temp is and sht_temp is not None:
+            if dht_temp and sht_temp:
                 diff = round(abs(dht_temp - sht_temp), 2)
             else:
                 diff = 'N/A'
