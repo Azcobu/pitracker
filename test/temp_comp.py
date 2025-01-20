@@ -1,17 +1,12 @@
-# temperature comparison
-import serial
+import time
 import adafruit_dht
 import board
-import time
 
-dht22 = adafruit_dht.DHT22(board.D4)  
+dht_device = adafruit_dht.DHT22(board.D4)
 
 def read_sht41():
-    serial_port = '/dev/ttyACM0'
-    baud_rate = 9600
-
     try:
-        with serial.Serial(serial_port, baud_rate, timeout=1) as ser:
+        with serial.Serial('/dev/ttyACM0', 9600, timeout=2) as ser:
             line = ser.readline().decode('utf-8').strip()
             if not line:
                 print("SHT41: no data received from sensor")
@@ -26,30 +21,23 @@ def read_sht41():
 
 def read_dht22():
     try:
-        temperature = dht22.temperature
-
-        if temperature is not None:
-            return temperature
-        else:
-            print("DHT22: failed to retrieve data from sensor.")
-            return 'N/A'
+        temperature_c = dht_device.temperature
+        if temperature_c is not None:
+            return temperature_c
     except Exception as err:
-        print(f'DHT22: sensor error: {err}')
+        print(f'DHT22 error:{err}')
         return 'N/A'
 
 def main():
-
     while True:
         try:
-            trinkey_temp = read_sht41()
-            dht22_temp = read_dht22()
-            print(f'Trinkey: {trinkey_temp}, DHT22: {dht22_temp}')
-            time.sleep(5)
-        except KeyboardInterrupt:
-            print("\nExiting...")
-        finally:
-            dht22.exit()  # Clean up DHT22 resources
-            #sht41_serial.close()  # Close serial connection
+            dht_temp = read_dht22()
+            sht_temp = read_sht41()
+            diff = abs(dht_temp - sht_temp)
+            print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference={diff}')
+        except Exception as err:
+            print(f"Error: {err}")
+        time.sleep(2.0)
 
 if __name__ == '__main__':
     main()
