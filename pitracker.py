@@ -68,7 +68,7 @@ class PiTracker:
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
 
-        dht_sensor = adafruit_dht.DHT22(board.D4)
+        self.dht_sensor = adafruit_dht.DHT22(board.D4)
 
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
@@ -114,7 +114,7 @@ class PiTracker:
         except RuntimeError as error:
             # Handle occasional sensor read errors
             self.logger.error(f" DHT22 sensor error: {error}")
-            raise SensorReadError(f"DHT22 sensor runtime error: {e}")
+            raise SensorReadError(f"DHT22 sensor runtime error: {error}")
 
     def write_csv_from_buffer(self) -> None:
         """Writes buffered temperatures to the CSV file and prunes old data."""
