@@ -118,6 +118,7 @@ class PiTracker:
             except RuntimeError as error:
                 self.logger.error(f"DHT22 error: {error}. Retrying ({attempt + 1}/{retries})...")
                 # raise SensorReadError(f"DHT22 sensor runtime error: {error}")
+                attempt += 1
                 time.sleep(delay)
 
         self.logger.error("Failed to read DHT22 after retries.")
