@@ -21,6 +21,8 @@ import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
+import adafruit_dht
+import board
 
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
@@ -52,7 +54,7 @@ class PiTracker:
                 logging.FileHandler('pi_tracker.log'),
                 logging.StreamHandler()
             ]
-        )
+        ) 
         self.logger = logging.getLogger(__name__)
 
         pygame.init()
@@ -66,13 +68,15 @@ class PiTracker:
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
 
+        dht_device = adafruit_dht.DHT22(board.D4)
+
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
 
         pygame.mouse.set_visible(False)
         self.logger.info("PiTracker initialized")
 
-    def read_sensor(self) -> Optional[Tuple[float, float, float]]:
+    def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
         Reads the current data from the sensor via the serial connection.
         Returns tuple of (temperature, humidity, touch) or raises SensorReadError
@@ -92,6 +96,28 @@ class PiTracker:
         except ValueError as e:
             self.logger.error("Invalid sensor data format: %s", line)
             raise SensorReadError(f"Invalid sensor data: {e}")
+
+    def read_sensor_dht22(self) -> Optional[Tuple[float, float]]:
+        try:
+            temperature = self.dht_sensor.temperature
+            humidity = self.dht_sensor.humidity
+
+            if temperature is not None and humidity is not None:
+                return temperature, humidity
+            else:
+                print("Failed to retrieve data from sensor. Trying again...")
+
+        except RuntimeError as error:
+            # Handle occasional sensor read errors
+            self.logger.error(f" DHT22 aensor error: {error}")
+            raise SensorReadError(f"DHT22 sensor error: {e}")
+
+                try:
+        temperature_c = dht_device.temperature
+        if temperature_c is not None:
+            return temperature_c
+    except Exception as err:
+        print(f'DHT22 error:{err}')
 
     def write_csv_from_buffer(self) -> None:
         """Writes buffered temperatures to the CSV file and prunes old data."""
@@ -392,7 +418,7 @@ class PiTracker:
 
                 if datetime.now().second % 5 == 0:
                     try:
-                        sensor_data = self.read_sensor()
+                        sensor_data = self.read_sensor_sht41()
                         if sensor_data:
                             current_temp, current_humid, current_touch = sensor_data
                     except SensorReadError as e:
