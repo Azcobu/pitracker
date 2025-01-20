@@ -184,7 +184,7 @@ class PiTracker:
                     placeholder_text = self.get_cached_text("Graph load error", self.temp_font, self.TEXT_COLOUR)
                     self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
             else:
-                placeholder_text = self.get_cached_text("Graph not available", self.temp_font, self.TEXT_COLOUR)
+                placeholder_text = self.get_cached_text("Rendering graph...", self.temp_font, self.TEXT_COLOUR)
                 self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
 
             # Display temperature
