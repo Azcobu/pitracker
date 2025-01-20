@@ -20,8 +20,8 @@ def read_sht41():
 def main():
     while True:
         try:
-            temp = read_sensor()
-            print(f'{}temp')
+            temp = read_sht41()
+            print(f'{temp}')
         except Exception as err:
             print(f'SHT41 error:{err}')
 
