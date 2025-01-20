@@ -41,7 +41,7 @@ def main():
         except Exception as err:
             print(f"Error: {err}")
 
-        print(f'Current average offset: {sum(offsets) / len(offsets)}')
+        print(f'Current average offset: {round(sum(offsets) / len(offsets), 2)}')
         time.sleep(10)
 
 if __name__ == '__main__':
