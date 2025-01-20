@@ -7,7 +7,7 @@ import time
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
 
-def read_sht41() -> Optional[Tuple[float, float, float]]:
+def read_sht41():
     serial_port = '/dev/ttyACM0'
     baud_rate = 9600
 
@@ -33,7 +33,7 @@ def read_dht22():
         temperature = dht_sensor.temperature
         #humidity = dht_sensor.humidity
 
-        if temperature is not None # and humidity is not None:
+        if temperature is not None: # and humidity is not None:
             return temperature
         else:
             print("Failed to retrieve data from sensor. Trying again...")
@@ -41,14 +41,13 @@ def read_dht22():
         # Handle occasional sensor read errors
         print(f"Sensor error: {error}")
 
-
 def main():
 
     while True:
         trinkey_temp = read_sht41()
         dht22_temp = read_dht22()
         print(f'Trinkey: {trinkey_temp}, DHT22: {dht22_temp}')
-        time.sleep(2)
+        time.sleep(5)
 
 if __name__ == '__main__':
     main()
