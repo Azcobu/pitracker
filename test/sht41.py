@@ -1,5 +1,5 @@
-    import time
-    import serial
+import time
+import serial
     
 def read_sht41():
 
