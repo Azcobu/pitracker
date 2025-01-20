@@ -16,8 +16,6 @@ def read_sht41():
             return float(temp)
     except Exception as err:
         print(f'SHT41 error:{err}')
-    finally:
-        return None
 
 def read_dht22():
     try:
@@ -26,8 +24,6 @@ def read_dht22():
             return temperature_c
     except Exception as err:
         print(f'DHT22 error:{err}')
-    finally:
-        return None
 
 def main():
     while True:
