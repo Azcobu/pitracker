@@ -32,9 +32,7 @@ def main():
             sht_temp = read_sht41()
             if dht_temp and sht_temp:
                 diff = round(abs(dht_temp - sht_temp), 2)
-            else:
-                diff = 'N/A'
-            print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference={diff}')
+                print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference= {diff}')
         except Exception as err:
             print(f"Error: {err}")
         time.sleep(2.0)
