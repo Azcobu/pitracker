@@ -102,19 +102,26 @@ class PiTracker:
         Reads the current data from the DHT22 sensor via the GPIO pins.
         Returns tuple of (temperature, humidity) or raises SensorReadError
         """
-        try:
-            temperature = self.dht_sensor.temperature
-            humidity = self.dht_sensor.humidity
+        retries = 5
+        delay = 2
 
-            if temperature is not None and humidity is not None:
-                return temperature, humidity
-            else:
-                self.logger.error("Failed to retrieve data from DHT22 sensor.")
+        for attempt in range(retries):
+            try:
+                temperature = self.dht_sensor.temperature
+                humidity = self.dht_sensor.humidity
 
-        except RuntimeError as error:
-            # Handle occasional sensor read errors
-            self.logger.error(f" DHT22 sensor error: {error}")
-            raise SensorReadError(f"DHT22 sensor runtime error: {error}")
+                if temperature is not None and humidity is not None:
+                    return temperature, humidity
+                else:
+                    self.logger.error("Failed to retrieve data from DHT22 sensor.")
+
+            except RuntimeError as error:
+                self.logger.error(f"DHT22 error: {error}. Retrying ({attempt + 1}/{retries})...")
+                # raise SensorReadError(f"DHT22 sensor runtime error: {error}")
+                time.sleep(delay)
+
+        self.logger.error("Failed to read DHT22 after retries.")
+        return None, None
 
     def write_csv_from_buffer(self) -> None:
         """Writes buffered temperatures to the CSV file and prunes old data."""
