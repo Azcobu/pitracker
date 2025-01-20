@@ -26,19 +26,23 @@ def read_dht22():
         print(f'DHT22 error:{err}')
 
 def main():
-    merc = 32.8
+    #merc = 32.8
+    offsets = []
     while True:
         try:
             dht_temp = read_dht22()
             sht_temp = read_sht41()
             if dht_temp and sht_temp:
                 diff = round(abs(dht_temp - sht_temp), 2)
-                avg = round((dht_temp + sht_temp + merc) / 3, 2)
+                avg = round((dht_temp + sht_temp) / 2, 2)
                 sht_diff = round(abs(sht_temp - avg), 2)
                 print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference= {diff}, avg= {avg}, sht_diff= {sht_diff}')
+                offsets.append(sht_diff)
         except Exception as err:
             print(f"Error: {err}")
-        time.sleep(2.0)
+
+        print(f'Current average offset: {sum(offsets) / len(offsets)}')
+        time.sleep(10)
 
 if __name__ == '__main__':
     main()
