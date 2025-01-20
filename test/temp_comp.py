@@ -34,7 +34,7 @@ def main():
         try:
             dht_temp = read_dht22()
             sht_temp = read_sht41()
-            diff = abs(dht_temp - sht_temp)
+            diff = round(abs(dht_temp - sht_temp), 2)
             print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference={diff}')
         except Exception as err:
             print(f"Error: {err}")
