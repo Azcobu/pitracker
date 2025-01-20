@@ -15,18 +15,18 @@ def read_sht41():
         with serial.Serial(serial_port,baud_rate, timeout=1) as ser:
             line = ser.readline().decode('utf-8').strip()
             if not line:
-                print("No data received from sensor")
+                print("SHT41: no data received from sensor")
                 return 'N/A'
 
             _, temp, humid, touch = line.split(',')
             return float(temp) #, float(humid), float(touch)
 
     except (serial.SerialException, serial.SerialTimeoutException) as e:
-        print("Serial communication error: %s", e)
+        print("SHT41: serial communication error: %s", e)
         return 'N/A'
         #raise SensorReadError(f"Serial communication failed: {e}")
     except ValueError as e:
-        print("Invalid sensor data format: %s", line)
+        print("SHT41: invalid sensor data format: %s", line)
         return 'N/A'
         #raise SensorReadError(f"Invalid sensor data: {e}")
 
@@ -39,11 +39,11 @@ def read_dht22():
         if temperature is not None: # and humidity is not None:
             return temperature
         else:
-            print("Failed to retrieve data from sensor. Trying again...")
+            print("DHT22: failed to retrieve data from sensor. Trying again...")
             return 'N/A'
     except RuntimeError as error:
         # Handle occasional sensor read errors
-        print(f"Sensor error: {error}")
+        print(f"DHT22: sensor error: {error}")
         return 'N/A'
 
 def main():
