@@ -11,14 +11,13 @@ def read_sht41():
             line = ser.readline().decode('utf-8').strip()
             if not line:
                 print("SHT41: no data received from sensor")
-                return 'N/A'
 
             _, temp, humid, touch = line.split(',')
             return float(temp)
-
     except Exception as err:
         print(f'SHT41 error:{err}')
-        return 'N/A'
+    finally:
+        return None
 
 def read_dht22():
     try:
@@ -27,14 +26,18 @@ def read_dht22():
             return temperature_c
     except Exception as err:
         print(f'DHT22 error:{err}')
-        return 'N/A'
+    finally:
+        return None
 
 def main():
     while True:
         try:
             dht_temp = read_dht22()
             sht_temp = read_sht41()
-            diff = round(abs(dht_temp - sht_temp), 2)
+            if dht_temp is and sht_temp is not None:
+                diff = round(abs(dht_temp - sht_temp), 2)
+            else:
+                diff = 'N/A'
             print(f'DHT22: {dht_temp}, SHT41: {sht_temp}, difference={diff}')
         except Exception as err:
             print(f"Error: {err}")
