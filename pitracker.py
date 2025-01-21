@@ -104,10 +104,10 @@ class PiTracker:
     def calc_sun_times(self):
         s = sun(self.location.observer, date=datetime.today())
 
-        dawn = s['dawn'].timestamp()
-        sunrise = s['sunrise'].timestamp()
-        sunset = s['sunset'].timestamp()
-        dusk = s['dusk'].timestamp()
+        dawn = s['dawn'].time()
+        sunrise = s['sunrise'].time()
+        sunset = s['sunset'].time()
+        dusk = s['dusk'].time()
 
         return dawn, sunrise, sunset, dusk
 
@@ -374,7 +374,7 @@ class PiTracker:
         minute = timestamp.minute
         time_val = hour + minute/60.0
 
-        current = timestamp.timestamp()
+        current = timestamp.time()
 
         if self.sunrise <= current <= self.sunset:
             return 1.0
