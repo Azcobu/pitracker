@@ -419,7 +419,7 @@ class PiTracker:
             humidities = df['humidity'].to_numpy()
 
             # Create grids
-            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 500)
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 240)
             y_points = np.linspace(0, 45, 500)
             X, Y = np.meshgrid(x_points, y_points)
 
