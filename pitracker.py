@@ -9,6 +9,7 @@
 
 import time
 import subprocess
+import traceback
 import json
 import csv
 import os
@@ -396,84 +397,83 @@ class PiTracker:
         return [c * factor for c in color[:3]] + [color[3]]
 
     def plot_temp_humidity(self, df: pd.DataFrame) -> None:
-        #try:
-        fig = plt.figure(figsize=(10, 6), dpi=80)
-        plt.style.use('dark_background')
-        
-        ax1 = plt.gca()
+        try:
+            fig = plt.figure(figsize=(10, 6), dpi=80)
+            plt.style.use('dark_background')
+            
+            ax1 = plt.gca()
 
-        # Define the temperature range and colours
-        temperature_range = [0, 15, 25, 30, 40, 45]  
-        colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+            # Define the temperature range and colours
+            temperature_range = [0, 15, 25, 30, 40, 45]  
+            colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
 
-        cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
-        norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
+            cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
+            norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
 
-        timestamps_num = mdates.date2num(df['timestamp'])
-        temperatures = df['temperature'].to_numpy()
-        humidities = df['humidity'].to_numpy()
+            timestamps_num = mdates.date2num(df['timestamp'])
+            temperatures = df['temperature'].to_numpy()
+            humidities = df['humidity'].to_numpy()
 
-        # Create grids
-        x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
-        y_points = np.linspace(0, 45, 500)
-        X, Y = np.meshgrid(x_points, y_points)
+            # Create grids
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
+            y_points = np.linspace(0, 45, 500)
+            X, Y = np.meshgrid(x_points, y_points)
 
-        # Get datetime objects for brightness calculation
-        x_datetimes = mdates.num2date(x_points)
-        brightness_factors = np.array([self.get_brightness_factor(dt) for dt in x_datetimes])
+            # Get datetime objects for brightness calculation
+            x_datetimes = mdates.num2date(x_points)
+            brightness_factors = np.array([self.get_brightness_factor(dt) for dt in x_datetimes])
 
-        temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
+            temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
 
-        # Create mask
-        mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
+            # Create mask
+            mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
 
-        # Create gradient colors with time-based brightness
-        Z = norm(Y)
-        gradient_colours = cmap(Z)
+            # Create gradient colors with time-based brightness
+            Z = norm(Y)
+            gradient_colours = cmap(Z)
 
-        # Apply brightness factors to each vertical slice
-        for i in range(gradient_colours.shape[1]):
-            gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
-                                    for color in gradient_colours[:, i]]
+            # Apply brightness factors to each vertical slice
+            for i in range(gradient_colours.shape[1]):
+                gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
+                                        for color in gradient_colours[:, i]]
 
-        gradient_colours[mask] = (0, 0, 0, 0)
+            gradient_colours[mask] = (0, 0, 0, 0)
 
-        # Plot gradient
-        ax1.imshow(gradient_colours, 
-                extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
-                aspect='auto', 
-                origin='lower')
+            # Plot gradient
+            ax1.imshow(gradient_colours, 
+                    extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
+                    aspect='auto', 
+                    origin='lower')
 
-        # Plot temperature and humidity lines
-        temp_line = ax1.plot(df['timestamp'], temperatures, color='white', 
-                            linewidth=2, label='Temperature')[0]
-        
-        ax2 = ax1.twinx()
-        humidity_line = ax2.plot(df['timestamp'], humidities, color='blue', 
-                            linewidth=2, label='Humidity')[0]
+            # Plot temperature and humidity lines
+            temp_line = ax1.plot(df['timestamp'], temperatures, color='white', 
+                                linewidth=2, label='Temperature')[0]
+            
+            ax2 = ax1.twinx()
+            humidity_line = ax2.plot(df['timestamp'], humidities, color='blue', 
+                                linewidth=2, label='Humidity')[0]
 
-        # Grid and formatting
-        ax1.grid(visible=True, which='major', color='black', linestyle='-', 
-                linewidth=1, alpha=1)
-        ax1.xaxis.set_major_locator(mdates.HourLocator())
-        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
-        ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
-        ax1.set_frame_on(False)
+            # Grid and formatting
+            ax1.grid(visible=True, which='major', color='black', linestyle='-', 
+                    linewidth=1, alpha=1)
+            ax1.xaxis.set_major_locator(mdates.HourLocator())
+            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+            ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
+            ax1.set_frame_on(False)
 
-        # Configure axes
-        ax1.set_ylim(0, 45)
-        ax2.set_ylim(0, 100)
-        ax2.tick_params(axis='y', labelcolor='blue')
+            # Configure axes
+            ax1.set_ylim(0, 45)
+            ax2.set_ylim(0, 100)
+            ax2.tick_params(axis='y', labelcolor='blue')
 
-        plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
-        plt.tight_layout()
+            plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
+            plt.tight_layout()
 
-        return fig
-        '''
+            return fig
         except Exception as e:
             self.logger.error("Error plotting temperature/humidity: %s", e)
+            print(traceback.format_exc())
             raise
-        '''
 
     def cleanup(self) -> None:
         """Clean up resources before shutdown"""
@@ -544,6 +544,7 @@ class PiTracker:
             self.logger.info("Received shutdown signal")
         except Exception as e:
             self.logger.error("Unexpected error in main loop: %s", e)
+            print(traceback.format_exc())
         finally:
             self.cleanup()
 
