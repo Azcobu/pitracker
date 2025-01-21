@@ -104,7 +104,7 @@ class PiTracker:
 
     def calc_sun_times(self):
         s = sun(self.location.observer, date=datetime.today())
-        timezone = pytz.timezone(city.timezone)
+        timezone = pytz.timezone(self.location.timezone)
 
         dawn = s['dawn'].astimezone(timezone).time()
         sunrise = s['sunrise'].astimezone(timezone).time()
