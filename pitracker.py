@@ -118,6 +118,11 @@ class PiTracker:
         sunset = s['sunset'].astimezone(timezone).time()
         dusk = s['dusk'].astimezone(timezone).time()
 
+        self.logger.info("Set dawn time to %s", dawn)
+        self.logger.info("Set sunrise time to %s", sunrise)
+        self.logger.info("Set sunset time to %s", sunset)
+        self.logger.info("Set dusk time to %s", dusk)
+
         return self.time_to_seconds(dawn), self.time_to_seconds(sunrise),\
                self.time_to_seconds(sunset), self.time_to_seconds(dusk)
 
