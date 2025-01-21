@@ -339,11 +339,11 @@ class PiTracker:
         minute = timestamp.minute
         time_val = hour + minute/60.0
         
-        # Define day/night transition times
-        dawn_start = 5.0   # 5 AM
-        dawn_end = 7.0     # 7 AM
-        dusk_start = 19.0  # 7 PM
-        dusk_end = 21.0    # 9 PM
+        # Define day/night transition times, averaged for ocation
+        dawn_start = 5.8   # 5:48 AM
+        dawn_end = 6.67    # 6:40 AM (average sunrise)
+        dusk_start = 18.87 # 6:52 PM (average sunset)
+        dusk_end = 20.55   # 8:33 PM
         
         if dawn_end <= time_val <= dusk_start:
             # Full brightness during day
