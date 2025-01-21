@@ -5,9 +5,11 @@
 # at midnight get stats for the day - high, avg, for longterm use?
 # make graph properly 24 hrs, not 24 hrs + up to another hr in temp buffer - done
 # get display timeout working with touch sensor
+# proper sunrise/sunset times updated at midnight, not just estimates
 
 import time
 import subprocess
+import json
 import csv
 import os
 import logging
@@ -23,6 +25,8 @@ import numpy as np
 import pandas as pd
 import adafruit_dht
 import board
+from astral import LocationInfo
+from astral.sun import sun
 
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
@@ -34,6 +38,7 @@ class PiTracker:
     SERIAL_PORT = '/dev/ttyACM0'
     BAUD_RATE = 9600
     CSV_FILE = "temperature_log.csv"
+    LOCATION_CONFIG = 'location_config.json'
     DISPLAY_WIDTH = 800
     DISPLAY_HEIGHT = 480
     BACKGROUND_COLOUR = (0, 0, 0)
@@ -68,6 +73,11 @@ class PiTracker:
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
 
+        self.use_astral = False
+        self.location = None
+        self.read_location()
+        self.dawn, self.sunrise, self.sunset, self.dusk = self.calc_sun_times()
+
         self.dht_sensor = adafruit_dht.DHT22(board.D4)
 
         # Cache for rendered text
@@ -75,6 +85,31 @@ class PiTracker:
 
         pygame.mouse.set_visible(False)
         self.logger.info("PiTracker initialized")
+
+    def read_location(self):
+        try:
+            with open(self.LOCATION_CONFIG, 'r', encoding='utf-8') as f:
+                config = json.loads(f.read())
+                self.location = LocationInfo(
+                    config['name'], 
+                    config['region'], 
+                    config['timezone'], 
+                    config['latitude'], 
+                    config['longitude']
+                )
+            self.use_astral = True
+        except FileNotFoundError:
+            self.use_astral = False
+
+    def calc_sun_times(self):
+        s = sun(self.location.observer, date=datetime.date.today())
+
+        dawn = s['dawn'].timestamp()
+        sunrise = s['sunrise'].timestamp()
+        sunset = s['sunset'].timestamp()
+        dusk = s['dusk'].timestamp()
+
+        return dawn, sunrise, sunset, dusk
 
     def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
@@ -338,25 +373,17 @@ class PiTracker:
         hour = timestamp.hour
         minute = timestamp.minute
         time_val = hour + minute/60.0
-        
-        # Define day/night transition times, averaged for ocation
-        dawn_start = 5.8   # 5:48 AM
-        dawn_end = 6.67    # 6:40 AM (average sunrise)
-        dusk_start = 18.87 # 6:52 PM (average sunset)
-        dusk_end = 20.55   # 8:33 PM
-        
-        if dawn_end <= time_val <= dusk_start:
-            # Full brightness during day
+
+        current = timestamp.timestamp()
+
+        if self.sunrise <= current <= self.sunset:
             return 1.0
-        elif time_val <= dawn_start or time_val >= dusk_end:
-            # Reduced brightness at night
+        elif current <= self.dawn or current >= self.dusk:
             return 0.5
-        elif dawn_start < time_val < dawn_end:
-            # Linear transition during dawn
-            return 0.5 + 0.5 * (time_val - dawn_start) / (dawn_end - dawn_start)
-        else:  # dusk_start < time_val < dusk_end
-            # Linear transition during dusk
-            return 1.0 - 0.5 * (time_val - dusk_start) / (dusk_end - dusk_start)
+        elif self.dawn < current < self.sunrise:
+            return 0.5 + 0.5 * (current - self.dawn) / (self.sunrise - self.dawn)
+        else:  # sunset < current < dusk
+            return 1.0 - 0.5 * (current - self.sunset) / (self.dusk - self.sunset)
 
     def adjust_color_brightness(self, color, factor):
         """Adjust RGB color brightness while preserving alpha"""
