@@ -102,7 +102,7 @@ class PiTracker:
             self.use_astral = False
 
     def calc_sun_times(self):
-        s = sun(self.location.observer, date=datetime.date.today())
+        s = sun(self.location.observer, date=datetime.today())
 
         dawn = s['dawn'].timestamp()
         sunrise = s['sunrise'].timestamp()
