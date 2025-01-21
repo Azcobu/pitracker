@@ -333,6 +333,35 @@ class PiTracker:
             self.logger.error("Error generating graph: %s", e)
             raise
 
+    def get_brightness_factor(self, timestamp):
+        """Calculate brightness factor (0.5-1.0) based on time of day"""
+        hour = timestamp.hour
+        minute = timestamp.minute
+        time_val = hour + minute/60.0
+        
+        # Define day/night transition times
+        dawn_start = 5.0   # 5 AM
+        dawn_end = 7.0     # 7 AM
+        dusk_start = 19.0  # 7 PM
+        dusk_end = 21.0    # 9 PM
+        
+        if dawn_end <= time_val <= dusk_start:
+            # Full brightness during day
+            return 1.0
+        elif time_val <= dawn_start or time_val >= dusk_end:
+            # Reduced brightness at night
+            return 0.5
+        elif dawn_start < time_val < dawn_end:
+            # Linear transition during dawn
+            return 0.5 + 0.5 * (time_val - dawn_start) / (dawn_end - dawn_start)
+        else:  # dusk_start < time_val < dusk_end
+            # Linear transition during dusk
+            return 1.0 - 0.5 * (time_val - dusk_start) / (dusk_end - dusk_start)
+
+    def adjust_color_brightness(self, color, factor):
+        """Adjust RGB color brightness while preserving alpha"""
+        return [c * factor for c in color[:3]] + [color[3]]
+
     def create_temperature_gradient(self, df: pd.DataFrame, timestamps_num: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Create the temperature gradient for the plot."""
         temperatures = df['temperature'].to_numpy()
@@ -346,54 +375,78 @@ class PiTracker:
         return X, Y, mask, temp_interpolated
 
     def plot_temp_humidity(self, df: pd.DataFrame) -> None:
-        """Plot temperature and humidity data with gradient background."""
         try:
             fig = plt.figure(figsize=(10, 6), dpi=80)
             plt.style.use('dark_background')
-
+            
             ax1 = plt.gca()
-            temperature_range = [0, 15, 25, 30, 40, 45]
+
+            # Define the temperature range and colours
+            temperature_range = [0, 15, 25, 30, 40, 45]  
             colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
 
             cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
             norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
 
             timestamps_num = mdates.date2num(df['timestamp'])
-            _, Y, mask, _ = self.create_temperature_gradient(df, timestamps_num)
+            temperatures = df['temperature'].to_numpy()
+            humidities = df['humidity'].to_numpy()
 
+            # Create grids
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
+            y_points = np.linspace(0, 45, 500)
+            X, Y = np.meshgrid(x_points, y_points)
+
+            # Get datetime objects for brightness calculation
+            x_datetimes = mdates.num2date(x_points)
+            brightness_factors = np.array([self.get_brightness_factor(dt) for dt in x_datetimes])
+
+            temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
+
+            # Create mask
+            mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
+
+            # Create gradient colors with time-based brightness
             Z = norm(Y)
             gradient_colours = cmap(Z)
+
+            # Apply brightness factors to each vertical slice
+            for i in range(gradient_colours.shape[1]):
+                gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
+                                        for color in gradient_colours[:, i]]
+
             gradient_colours[mask] = (0, 0, 0, 0)
 
-            ax1.imshow(gradient_colours,
-                      extent=(timestamps_num[0], timestamps_num[-1], 0, 45),
-                      aspect='auto',
-                      origin='lower')
+            # Plot gradient
+            ax1.imshow(gradient_colours, 
+                    extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
+                    aspect='auto', 
+                    origin='lower')
 
-            # Plot temperature line
-            ax1.plot(df['timestamp'], df['temperature'], color='white',
-                    linewidth=2, label='Temperature')
-
-            # Add second y-axis for humidity
+            # Plot temperature and humidity lines
+            temp_line = ax1.plot(df['timestamp'], temperatures, color='white', 
+                                linewidth=2, label='Temperature')[0]
+            
             ax2 = ax1.twinx()
-            ax2.plot(df['timestamp'], df['humidity'], color='blue',
-                    linewidth=2) # label='Humidity', alpha=0.8
+            humidity_line = ax2.plot(df['timestamp'], humidities, color='blue', 
+                                linewidth=2, label='Humidity')[0]
 
-            # Configure axes
-            ax1.grid(visible=True, which='major', color='black', linestyle='-',
+            # Grid and formatting
+            ax1.grid(visible=True, which='major', color='black', linestyle='-', 
                     linewidth=1, alpha=1)
             ax1.xaxis.set_major_locator(mdates.HourLocator())
             ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
             ax1.set_frame_on(False)
 
+            # Configure axes
             ax1.set_ylim(0, 45)
             ax2.set_ylim(0, 100)
             ax2.tick_params(axis='y', labelcolor='blue')
-            # ax2.set_ylabel('Humidity %', color='blue')
 
             plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
             plt.tight_layout()
 
+            return fig
         except Exception as e:
             self.logger.error("Error plotting temperature/humidity: %s", e)
             raise
