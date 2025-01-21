@@ -390,11 +390,11 @@ class PiTracker:
         if self.sunrise <= current <= self.sunset:
             return 1.0
         elif current <= self.dawn or current >= self.dusk:
-            return 0.5
+            return 0.25
         elif self.dawn < current < self.sunrise:
-            return 0.5 + 0.5 * (current - self.dawn) / (self.sunrise - self.dawn)
+            return 0.25 + 0.75 * (current - self.dawn) / (self.sunrise - self.dawn)
         else:  # sunset < current < dusk
-            return 1.0 - 0.5 * (current - self.sunset) / (self.dusk - self.sunset)
+            return 0.75 - 0.25 * (current - self.sunset) / (self.dusk - self.sunset)
 
     def adjust_color_brightness(self, color, factor):
         """Adjust RGB color brightness while preserving alpha"""
@@ -419,8 +419,8 @@ class PiTracker:
             humidities = df['humidity'].to_numpy()
 
             # Create grids
-            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 240)
-            y_points = np.linspace(0, 45, 500)
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 400)
+            y_points = np.linspace(0, 45, 240)
             X, Y = np.meshgrid(x_points, y_points)
 
             # Get datetime objects for brightness calculation
