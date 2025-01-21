@@ -362,18 +362,6 @@ class PiTracker:
         """Adjust RGB color brightness while preserving alpha"""
         return [c * factor for c in color[:3]] + [color[3]]
 
-    def create_temperature_gradient(self, df: pd.DataFrame, timestamps_num: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Create the temperature gradient for the plot."""
-        temperatures = df['temperature'].to_numpy()
-        x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 200)
-        y_points = np.linspace(0, 45, 500)
-
-        X, Y = np.meshgrid(x_points, y_points)
-        temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
-        mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
-
-        return X, Y, mask, temp_interpolated
-
     def plot_temp_humidity(self, df: pd.DataFrame) -> None:
         try:
             fig = plt.figure(figsize=(10, 6), dpi=80)
@@ -435,6 +423,7 @@ class PiTracker:
             ax1.grid(visible=True, which='major', color='black', linestyle='-', 
                     linewidth=1, alpha=1)
             ax1.xaxis.set_major_locator(mdates.HourLocator())
+            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
             ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
             ax1.set_frame_on(False)
 
