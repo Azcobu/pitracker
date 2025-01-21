@@ -27,6 +27,7 @@ import adafruit_dht
 import board
 from astral import LocationInfo
 from astral.sun import sun
+import pytz
 
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
@@ -103,11 +104,12 @@ class PiTracker:
 
     def calc_sun_times(self):
         s = sun(self.location.observer, date=datetime.today())
+        timezone = pytz.timezone(city.timezone)
 
-        dawn = s['dawn'].time()
-        sunrise = s['sunrise'].time()
-        sunset = s['sunset'].time()
-        dusk = s['dusk'].time()
+        dawn = s['dawn'].astimezone(timezone).time()
+        sunrise = s['sunrise'].astimezone(timezone).time()
+        sunset = s['sunset'].astimezone(timezone).time()
+        dusk = s['dusk'].astimezone(timezone).time()
 
         return dawn, sunrise, sunset, dusk
 
