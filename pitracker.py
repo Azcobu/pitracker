@@ -380,10 +380,6 @@ class PiTracker:
 
     def get_brightness_factor(self, timestamp):
         """Calculate brightness factor (0.5-1.0) based on time of day"""
-        hour = timestamp.hour
-        minute = timestamp.minute
-        time_val = hour + minute/60.0
-
         current = self.time_to_seconds(timestamp.time())
 
         if self.sunrise <= current <= self.sunset:
