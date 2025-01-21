@@ -103,6 +103,12 @@ class PiTracker:
         except FileNotFoundError:
             self.use_astral = False
 
+    def time_to_seconds(self, t):
+        """
+        Converts a time object to seconds since midnight.
+        """
+        return t.hour * 3600 + t.minute * 60 + t.second
+
     def calc_sun_times(self):
         s = sun(self.location.observer, date=datetime.today())
         timezone = pytz.timezone(self.location.timezone)
@@ -112,7 +118,8 @@ class PiTracker:
         sunset = s['sunset'].astimezone(timezone).time()
         dusk = s['dusk'].astimezone(timezone).time()
 
-        return dawn, sunrise, sunset, dusk
+        return self.time_to_seconds(dawn), self.time_to_seconds(sunrise),\
+               self.time_to_seconds(sunset), self.time_to_seconds(dusk)
 
     def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
@@ -377,11 +384,7 @@ class PiTracker:
         minute = timestamp.minute
         time_val = hour + minute/60.0
 
-        current = timestamp.time()
-
-        print(f"Dawn: {self.dawn}, Sunrise: {self.sunrise}, Current: {current}")
-        print(f"Sunrise <= Current <= Sunset: {self.sunrise <= current <= self.sunset}")
-        print(f"Current <= Dawn or Current >= Dusk: {current <= self.dawn or current >= self.dusk}")
+        current = self.time_to_seconds(timestamp.time())
 
         if self.sunrise <= current <= self.sunset:
             return 1.0
