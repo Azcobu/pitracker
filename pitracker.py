@@ -376,6 +376,10 @@ class PiTracker:
 
         current = timestamp.time()
 
+        print(f"Dawn: {self.dawn}, Sunrise: {self.sunrise}, Current: {current}")
+        print(f"Sunrise <= Current <= Sunset: {self.sunrise <= current <= self.sunset}")
+        print(f"Current <= Dawn or Current >= Dusk: {current <= self.dawn or current >= self.dusk}")
+
         if self.sunrise <= current <= self.sunset:
             return 1.0
         elif current <= self.dawn or current >= self.dusk:
