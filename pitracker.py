@@ -440,6 +440,10 @@ class PiTracker:
                 gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
                                         for color in gradient_colours[:, i]]
 
+            with open('colours_out', 'w', encoding='utf-8') as f:
+                for row in gradient_colours:
+                    f.write(','.join(map(str, row)) + '\n')
+
             gradient_colours[mask] = (0, 0, 0, 0)
 
             # Plot gradient
