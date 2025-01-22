@@ -51,6 +51,7 @@ class PiTracker:
     CSV_WRITE_INTERVAL = 3600
     HOURS_TO_KEEP = 24
     SCREEN_TIMEOUT = 60
+    SUN_TIMES_UPDATE_INTERVAL = 24 * 3600
 
     def __init__(self):
         # Set up logging
@@ -492,6 +493,7 @@ class PiTracker:
     def run(self) -> None:
         last_graph_time = 0
         last_csv_time = 0
+        last_sun_times_update = 0
 
         try:
             while True:
@@ -541,6 +543,12 @@ class PiTracker:
                     self.logger.info("Writing to CSV...")
                     self.write_csv_from_buffer()
                     last_csv_time = time.time()
+
+                # recalculate sun times daily
+                if now_timestamp - last_sun_times_update >= self.SUN_TIMES_UPDATE_INTERVAL:
+                    self.logger.info("Updating sun times...")
+                    last_sun_times_update = now_timestamp
+                    self.calc_sun_times()
 
                 time.sleep(1)
 
