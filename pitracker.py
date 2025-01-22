@@ -59,7 +59,7 @@ class PiTracker:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('pi_tracker.log'),
+                # logging.FileHandler('pi_tracker.log'),
                 logging.StreamHandler()
             ]
         ) 
