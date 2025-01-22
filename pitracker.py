@@ -473,6 +473,9 @@ class PiTracker:
             plt.tick_params(axis='both', which='major', labelsize=8, color='lightgray')
             plt.tight_layout()
 
+            #QQQQ
+            plt.savefig("highres.png", dpi=600)
+
             return fig
         except Exception as e:
             self.logger.error("Error plotting temperature/humidity: %s", e)
