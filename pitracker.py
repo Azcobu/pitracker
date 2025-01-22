@@ -436,13 +436,6 @@ class PiTracker:
             Z = norm(Y)
             gradient_colours = cmap(Z)
 
-            # Apply brightness factors to each vertical slice
-            print(f"gradient_colours shape: {gradient_colours.shape}") #QQQQ
-            print(f"X shape: {X.shape}")
-            print(f"Y shape: {Y.shape}")
-            print(f"brightness_factors length: {len(brightness_factors)}")
-            print(f"temp_interpolated length: {len(temp_interpolated)}")
-
             for i in range(gradient_colours.shape[1]):
                 gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
                                         for color in gradient_colours[:, i]]
