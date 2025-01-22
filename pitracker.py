@@ -390,11 +390,11 @@ class PiTracker:
         if self.sunrise <= current <= self.sunset:
             return 1.0
         elif current <= self.dawn or current >= self.dusk:
-            return 0.25
+            return 0.5
         elif self.dawn < current < self.sunrise:
-            return 0.25 + 0.75 * (current - self.dawn) / (self.sunrise - self.dawn)
+            return 0.5 + 0.5 * (current - self.dawn) / (self.sunrise - self.dawn)
         else:  # sunset < current < dusk
-            return 0.75 - 0.25 * (current - self.sunset) / (self.dusk - self.sunset)
+            return 0.5 - 0.5 * (current - self.sunset) / (self.dusk - self.sunset)
 
     def adjust_color_brightness(self, color, factor):
         """Adjust RGB color brightness while preserving alpha"""
@@ -437,6 +437,12 @@ class PiTracker:
             gradient_colours = cmap(Z)
 
             # Apply brightness factors to each vertical slice
+            print(f"gradient_colours shape: {gradient_colours.shape}") #QQQQ
+            print(f"X shape: {X.shape}")
+            print(f"Y shape: {Y.shape}")
+            print(f"brightness_factors length: {len(brightness_factors)}")
+            print(f"temp_interpolated length: {len(temp_interpolated)}")
+
             for i in range(gradient_colours.shape[1]):
                 gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
                                         for color in gradient_colours[:, i]]
