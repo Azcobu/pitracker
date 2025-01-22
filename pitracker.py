@@ -394,7 +394,7 @@ class PiTracker:
         elif self.dawn < current < self.sunrise:
             return 0.5 + 0.5 * (current - self.dawn) / (self.sunrise - self.dawn)
         else:  # sunset < current < dusk
-            return 0.5 - 0.5 * (current - self.sunset) / (self.dusk - self.sunset)
+            return 1 - 0.5 * (current - self.sunset) / (self.dusk - self.sunset)
 
     def adjust_color_brightness(self, color, factor):
         """Adjust RGB color brightness while preserving alpha"""
@@ -446,6 +446,7 @@ class PiTracker:
             ax1.imshow(gradient_colours, 
                     extent=(timestamps_num[0], timestamps_num[-1], 0, 45), 
                     aspect='auto', 
+                    interpolation='bilinear',
                     origin='lower')
 
             # Plot temperature and humidity lines
