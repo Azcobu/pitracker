@@ -79,7 +79,7 @@ class PiTracker:
         self.use_astral = False
         self.location = None
         self.read_location()
-        self.dawn, self.sunrise, self.sunset, self.dusk = self.calc_sun_times()
+        #self.dawn, self.sunrise, self.sunset, self.dusk = self.calc_sun_times()
 
         self.dht_sensor = adafruit_dht.DHT22(board.D4)
 
@@ -124,8 +124,10 @@ class PiTracker:
         self.logger.info("Set sunset time to %s", sunset)
         self.logger.info("Set dusk time to %s", dusk)
 
-        return self.time_to_seconds(dawn), self.time_to_seconds(sunrise),\
-               self.time_to_seconds(sunset), self.time_to_seconds(dusk)
+        self.dawn = time_to_seconds(dawn)
+        self.sunrise = time_to_seconds(sunrise)
+        self.sunset = time_to_seconds(sunset)
+        self.dusk = time_to_seconds(dusk)
 
     def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
@@ -504,6 +506,12 @@ class PiTracker:
                 now_timestamp = int(time.time())
                 current_temp, current_humid, current_touch = None, None, None
 
+                # recalculate sun times daily
+                if now_timestamp - last_sun_times_update >= self.SUN_TIMES_UPDATE_INTERVAL:
+                    self.logger.info("Updating sun times...")
+                    last_sun_times_update = now_timestamp
+                    self.calc_sun_times()
+
                 if datetime.now().second % 5 == 0:
                     try:
                         '''
@@ -543,12 +551,6 @@ class PiTracker:
                     self.logger.info("Writing to CSV...")
                     self.write_csv_from_buffer()
                     last_csv_time = time.time()
-
-                # recalculate sun times daily
-                if now_timestamp - last_sun_times_update >= self.SUN_TIMES_UPDATE_INTERVAL:
-                    self.logger.info("Updating sun times...")
-                    last_sun_times_update = now_timestamp
-                    self.calc_sun_times()
 
                 time.sleep(1)
 
