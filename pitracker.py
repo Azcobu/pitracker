@@ -124,10 +124,10 @@ class PiTracker:
         self.logger.info("Set sunset time to %s", sunset)
         self.logger.info("Set dusk time to %s", dusk)
 
-        self.dawn = time_to_seconds(dawn)
-        self.sunrise = time_to_seconds(sunrise)
-        self.sunset = time_to_seconds(sunset)
-        self.dusk = time_to_seconds(dusk)
+        self.dawn = self.time_to_seconds(dawn)
+        self.sunrise = self.time_to_seconds(sunrise)
+        self.sunset = self.time_to_seconds(sunset)
+        self.dusk = self.time_to_seconds(dusk)
 
     def read_sensor_sht41(self) -> Optional[Tuple[float, float, float]]:
         """
