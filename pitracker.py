@@ -427,8 +427,6 @@ class PiTracker:
             x_datetimes = mdates.num2date(x_points)
             brightness_factors = np.array([self.get_brightness_factor(dt) for dt in x_datetimes])
 
-            np.savetxt("brightness_factors.csv", brightness_factors, delimiter=",")
-
             temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
 
             # Create mask
