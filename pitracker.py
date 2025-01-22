@@ -376,7 +376,7 @@ class PiTracker:
             self.temp_graph = self.get_temp_graph()
             self.temp_graph.seek(0)
             self.temp_graph.truncate(0)
-            plt.savefig("highres.png", format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
+            # plt.savefig("highres.png", dpi=300, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
             plt.savefig(self.temp_graph, format='png', facecolor='black', edgecolor='none', bbox_inches='tight')
             self.temp_graph.seek(0)
             plt.close()
