@@ -427,6 +427,8 @@ class PiTracker:
             x_datetimes = mdates.num2date(x_points)
             brightness_factors = np.array([self.get_brightness_factor(dt) for dt in x_datetimes])
 
+            np.savetxt("brightness_factors.csv", brightness_factors, delimiter=",")
+
             temp_interpolated = np.interp(x_points, timestamps_num, temperatures)
 
             # Create mask
@@ -439,10 +441,6 @@ class PiTracker:
             for i in range(gradient_colours.shape[1]):
                 gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
                                         for color in gradient_colours[:, i]]
-
-            with open('colours_out', 'w', encoding='utf-8') as f:
-                for row in gradient_colours:
-                    f.write(','.join(map(str, row)) + '\n')
 
             gradient_colours[mask] = (0, 0, 0, 0)
 
