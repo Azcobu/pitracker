@@ -415,8 +415,8 @@ class PiTracker:
         for i in range(len(colors)-1):
             start_idx = int(color_positions[i] * 255)
             end_idx = int(color_positions[i+1] * 255)
-            start_color = mcolors.to_rgba(colors[i])
-            end_color = mcolors.to_rgba(colors[i+1])
+            start_color = np.array(mcolors.to_rgba(colors[i]))
+            end_color = np.array(mcolors.to_rgba(colors[i+1]))
             
             # Create a smooth transition between colors
             for j in range(start_idx, end_idx):
