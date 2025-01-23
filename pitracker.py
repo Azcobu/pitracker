@@ -413,10 +413,14 @@ class PiTracker:
 
             # Define the temperature range and colours
             temperature_range = [0, 45]  
+            boundaries = [0, 15, 25, 30, 45]
             colours = ['blue', 'green', 'yellow', 'red']
 
+            bnorm = mcolors.BoundaryNorm(boundaries, ncolors=256)
             cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
-            norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
+
+            #cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
+            #norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
 
             timestamps_num = mdates.date2num(df['timestamp'])
             temperatures = df['temperature'].to_numpy()
@@ -437,7 +441,7 @@ class PiTracker:
             mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
 
             # Create gradient colors with time-based brightness
-            Z = norm(Y)
+            Z = bnorm(Y)
             gradient_colours = cmap(Z)
 
             for i in range(gradient_colours.shape[1]):
