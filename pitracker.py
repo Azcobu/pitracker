@@ -412,8 +412,8 @@ class PiTracker:
             ax1 = plt.gca()
 
             # Define the temperature range and colours
-            temperature_range = [0, 20, 25, 30, 40, 45]  
-            colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
+            temperature_range = [0, 45]  
+            colours = ['blue', 'green', 'yellow', 'red']
 
             cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
             norm = mcolors.Normalize(vmin=min(temperature_range), vmax=max(temperature_range))
