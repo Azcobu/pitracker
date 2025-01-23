@@ -394,7 +394,10 @@ class PiTracker:
             })
 
             self.validate_data(df)
+            start_time = time.time()
             self.plot_temp_humidity(df)
+            end_time = time.time()
+            print(f"Time for 400x240: {end_time - start_time:.6f} seconds")
 
             # Update the graph buffer
             self.temp_graph = self.get_temp_graph()
@@ -440,7 +443,7 @@ class PiTracker:
             humidities = df['humidity'].to_numpy()
 
             # Create grids
-            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 800)
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 400)
             y_points = np.linspace(0, 45, 240)
             X, Y = np.meshgrid(x_points, y_points)
 
