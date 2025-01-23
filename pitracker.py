@@ -412,7 +412,7 @@ class PiTracker:
             ax1 = plt.gca()
 
             # Define the temperature range and colours
-            temperature_range = [0, 15, 25, 30, 40, 45]  
+            temperature_range = [0, 20, 25, 30, 40, 45]  
             colours = ['blue', 'green', 'yellow', 'orange', 'red', 'red']
 
             cmap = mcolors.LinearSegmentedColormap.from_list("temperature_gradient", colours)
@@ -423,7 +423,7 @@ class PiTracker:
             humidities = df['humidity'].to_numpy()
 
             # Create grids
-            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 400)
+            x_points = np.linspace(timestamps_num[0], timestamps_num[-1], 800)
             y_points = np.linspace(0, 45, 240)
             X, Y = np.meshgrid(x_points, y_points)
 
