@@ -424,6 +424,7 @@ class PiTracker:
                 pixel_array = np.concatenate([pixel_array, alpha_channel], axis=2)
 
             rgba_array = pixel_array.transpose(1, 0, 2) / 255.0
+            rgba_array = rgba_array[::-1, :, :]
             gradient_colors = rgba_array.reshape(-1, rgba_array.shape[2])
             cmap = mcolors.ListedColormap(gradient_colors)
             norm = mcolors.Normalize(vmin=0, vmax=45)
