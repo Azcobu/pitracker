@@ -413,13 +413,19 @@ class PiTracker:
             
             ax1 = plt.gca()
 
-            image = pygame.image.load('gradient.png')
+            # Load image
+            image = pygame.image.load('gradient.png').convert_alpha()
+            pixel_array = pygame.surfarray.array3d(image)
+
+            # Add alpha channel if missing
+            if pixel_array.shape[2] == 3:
+                print('alpha channel missing')
+                alpha_channel = np.ones((pixel_array.shape[0], pixel_array.shape[1], 1), dtype=pixel_array.dtype) * 255
+                pixel_array = np.concatenate([pixel_array, alpha_channel], axis=2)
 
             #cmap = self.create_custom_colormap(colors, color_positions)
             #norm = mcolors.Normalize(vmin=self.MIN_TEMP, vmax=self.MAX_TEMP)
 
-            image = pygame.image.load('gradient.png')
-            pixel_array = pygame.surfarray.array3d(image)
             colormap_array = pixel_array.transpose(1, 0, 2) / 255.0
             cmap = mcolors.ListedColormap(colormap_array)
             norm = mcolors.Normalize(vmin=0, vmax=45)
