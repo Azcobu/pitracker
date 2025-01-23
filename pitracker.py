@@ -394,10 +394,7 @@ class PiTracker:
             })
 
             self.validate_data(df)
-            start_time = time.time()
             self.plot_temp_humidity(df)
-            end_time = time.time()
-            print(f"Time for 400x240: {end_time - start_time:.6f} seconds")
 
             # Update the graph buffer
             self.temp_graph = self.get_temp_graph()
