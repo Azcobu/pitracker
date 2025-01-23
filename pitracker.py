@@ -406,6 +406,25 @@ class PiTracker:
         """Adjust RGB color brightness while preserving alpha"""
         return [c * factor for c in color[:3]] + [color[3]]
 
+    def create_custom_colormap(self, colors, color_positions):
+        # Create a high-resolution color array
+        color_array = np.linspace(0, 1, 256)
+        color_map = np.zeros((256, 4))
+        
+        # Map each color to its specified position
+        for i in range(len(colors)-1):
+            start_idx = int(color_positions[i] * 255)
+            end_idx = int(color_positions[i+1] * 255)
+            start_color = mcolors.to_rgba(colors[i])
+            end_color = mcolors.to_rgba(colors[i+1])
+            
+            # Create a smooth transition between colors
+            for j in range(start_idx, end_idx):
+                t = (j - start_idx) / (end_idx - start_idx)
+                color_map[j] = (1-t) * start_color + t * end_color
+        
+        return mcolors.ListedColormap(color_map)
+
     def plot_temp_humidity(self, df: pd.DataFrame) -> None:
         try:
             fig = plt.figure(figsize=(10, 6), dpi=80)
@@ -413,14 +432,11 @@ class PiTracker:
             
             ax1 = plt.gca()
 
-            # Define the temperature range and colours
+            temperature_range = [0, 45]
             colors = ['blue', 'green', 'yellow', 'red']
-            color_positions = [0, 0.33, 0.6, 1.0] 
+            color_positions = [0, 0.33, 0.6, 1.0]
 
-            cmap = mcolors.LinearSegmentedColormap.from_list(
-                "temperature_gradient", 
-                list(zip(color_positions, colors))
-            )
+            cmap = create_custom_colormap(colors, color_positions)
             norm = mcolors.Normalize(vmin=self.MIN_TEMP, vmax=self.MAX_TEMP)
 
             timestamps_num = mdates.date2num(df['timestamp'])
