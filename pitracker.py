@@ -406,7 +406,7 @@ class PiTracker:
         """Adjust RGB color brightness while preserving alpha"""
         return [c * factor for c in color[:3]] + [color[3]]
 
-    def create_custom_colormap(colors, color_positions, transition_width=0.01):
+    def create_custom_colormap(self, colors, color_positions, transition_width=0.01):
         color_map = np.zeros((256, 4))
         
         for i in range(len(colors)-1):
