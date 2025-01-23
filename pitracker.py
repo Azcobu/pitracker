@@ -436,7 +436,7 @@ class PiTracker:
             colors = ['blue', 'green', 'yellow', 'red']
             color_positions = [0, 0.33, 0.6, 1.0]
 
-            cmap = create_custom_colormap(colors, color_positions)
+            cmap = self.create_custom_colormap(colors, color_positions)
             norm = mcolors.Normalize(vmin=self.MIN_TEMP, vmax=self.MAX_TEMP)
 
             timestamps_num = mdates.date2num(df['timestamp'])
