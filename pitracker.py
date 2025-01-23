@@ -74,6 +74,8 @@ class PiTracker:
         self.small_font = pygame.font.SysFont(None, 28)
         self.temp_graph = BytesIO()
         self.temp_buffer = []
+        self.cmap = None
+        self.norm = None
         self.max_temp_past24 = 0.0
         self.avg_temp_past24 = 0.0
         self.min_temp_past24 = 0.0
@@ -81,7 +83,7 @@ class PiTracker:
         self.use_astral = False
         self.location = None
         self.read_location()
-        #self.dawn, self.sunrise, self.sunset, self.dusk = self.calc_sun_times()
+        self.generate_colourmap()
 
         self.dht_sensor = adafruit_dht.DHT22(board.D4)
 
@@ -105,6 +107,26 @@ class PiTracker:
             self.use_astral = True
         except FileNotFoundError:
             self.use_astral = False
+
+    def generate_colourmap(self):
+        try:
+            # Load image
+            image = pygame.image.load('gradient.png').convert_alpha()
+            pixel_array = pygame.surfarray.array3d(image)
+
+            # Add alpha channel if missing
+            if pixel_array.shape[2] == 3:
+                self.logger.warning('Gradient image alpha channel missing')
+                alpha_channel = np.ones((pixel_array.shape[0], pixel_array.shape[1], 1), dtype=pixel_array.dtype) * 255
+                pixel_array = np.concatenate([pixel_array, alpha_channel], axis=2)
+
+            rgba_array = pixel_array.transpose(1, 0, 2) / 255.0
+            rgba_array = rgba_array[::-1, :, :]
+            gradient_colors = rgba_array.reshape(-1, rgba_array.shape[2])
+            self.cmap = mcolors.ListedColormap(gradient_colors)
+            self.norm = mcolors.Normalize(vmin=0, vmax=45)
+        except Exception as err:
+            self.logger.error("Error generating colourmap: %s", err)
 
     def time_to_seconds(self, t):
         """
@@ -413,22 +435,6 @@ class PiTracker:
             
             ax1 = plt.gca()
 
-            # Load image
-            image = pygame.image.load('gradient.png').convert_alpha()
-            pixel_array = pygame.surfarray.array3d(image)
-
-            # Add alpha channel if missing
-            if pixel_array.shape[2] == 3:
-                print('Alpha channel missing')
-                alpha_channel = np.ones((pixel_array.shape[0], pixel_array.shape[1], 1), dtype=pixel_array.dtype) * 255
-                pixel_array = np.concatenate([pixel_array, alpha_channel], axis=2)
-
-            rgba_array = pixel_array.transpose(1, 0, 2) / 255.0
-            rgba_array = rgba_array[::-1, :, :]
-            gradient_colors = rgba_array.reshape(-1, rgba_array.shape[2])
-            cmap = mcolors.ListedColormap(gradient_colors)
-            norm = mcolors.Normalize(vmin=0, vmax=45)
-
             timestamps_num = mdates.date2num(df['timestamp'])
             temperatures = df['temperature'].to_numpy()
             humidities = df['humidity'].to_numpy()
@@ -448,8 +454,8 @@ class PiTracker:
             mask = Y > np.repeat(temp_interpolated[np.newaxis, :], len(y_points), axis=0)
 
             # Create gradient colors with time-based brightness
-            Z = norm(Y)
-            gradient_colours = cmap(Z)
+            Z = self.norm(Y)
+            gradient_colours = self.cmap(Z)
 
             for i in range(gradient_colours.shape[1]):
                 gradient_colours[:, i] = [self.adjust_color_brightness(color, brightness_factors[i]) 
