@@ -406,22 +406,24 @@ class PiTracker:
         """Adjust RGB color brightness while preserving alpha"""
         return [c * factor for c in color[:3]] + [color[3]]
 
-    def create_custom_colormap(self, colors, color_positions):
-        # Create a high-resolution color array
-        color_array = np.linspace(0, 1, 256)
+    def create_custom_colormap(colors, color_positions, transition_width=0.01):
         color_map = np.zeros((256, 4))
         
-        # Map each color to its specified position
         for i in range(len(colors)-1):
             start_idx = int(color_positions[i] * 255)
             end_idx = int(color_positions[i+1] * 255)
             start_color = np.array(mcolors.to_rgba(colors[i]))
             end_color = np.array(mcolors.to_rgba(colors[i+1]))
             
-            # Create a smooth transition between colors
-            for j in range(start_idx, end_idx):
-                t = (j - start_idx) / (end_idx - start_idx)
+            # Narrow transition region
+            transition_idx = int(transition_width * 255)
+            
+            for j in range(start_idx, start_idx + transition_idx):
+                t = (j - start_idx) / transition_idx
                 color_map[j] = (1-t) * start_color + t * end_color
+            
+            for j in range(start_idx + transition_idx, end_idx):
+                color_map[j] = end_color
         
         return mcolors.ListedColormap(color_map)
 
