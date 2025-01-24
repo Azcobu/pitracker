@@ -29,6 +29,7 @@ import board
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
+import schedule
 
 class SensorReadError(Exception):
     """Custom exception for sensor read failures"""
@@ -48,12 +49,8 @@ class PiTracker:
     BACKGROUND_COLOUR = (0, 0, 0)
     TEXT_COLOUR = (255, 255, 255)
     TEXT2_COLOUR = (128, 128, 255)
-    UPDATE_INTERVAL = 5
-    GRAPH_UPDATE_INTERVAL = 300
-    CSV_WRITE_INTERVAL = 3600
     HOURS_TO_KEEP = 24
     SCREEN_TIMEOUT = 60
-    SUN_TIMES_UPDATE_INTERVAL = 24 * 3600
 
     def __init__(self):
         # Set up logging
@@ -89,6 +86,9 @@ class PiTracker:
 
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
+
+        self.current_temp = 0.0
+        self.current_humid = 0.0
 
         pygame.mouse.set_visible(False)
         self.logger.info("PiTracker initialized")
@@ -135,6 +135,7 @@ class PiTracker:
         return t.hour * 3600 + t.minute * 60 + t.second
 
     def calc_sun_times(self):
+        self.logger.info("Updating sun times...")
         s = sun(self.location.observer, date=datetime.today())
         timezone = pytz.timezone(self.location.timezone)
 
@@ -203,6 +204,7 @@ class PiTracker:
 
     def write_csv_from_buffer(self) -> None:
         """Writes buffered temperatures to the CSV file and prunes old data."""
+        self.logger.info("Writing to CSV...")
         if not self.temp_buffer:
             self.logger.info("No data in buffer to write")
             return
@@ -296,16 +298,16 @@ class PiTracker:
                 self.screen.blit(placeholder_text, (20, self.DISPLAY_HEIGHT // 2))
 
             # Display temperature
-            if isinstance(current_temp, (float, int)):
-                formatted_temp = self.nice_round(current_temp)
+            if isinstance(self.current_temp, (float, int)):
+                formatted_temp = self.nice_round(self.current_temp)
                 temp_text = self.temp_font.render(f"{formatted_temp}°", True, self.TEXT_COLOUR)
             else:
                 temp_text = self.get_cached_text("N/A", self.temp_font, self.TEXT_COLOUR)
             self.screen.blit(temp_text, (left_margin, 32))
 
             # Display humidity
-            if isinstance(current_humid, (float, int)):
-                formatted_humid = self.nice_round(current_humid)
+            if isinstance(self.current_humid, (float, int)):
+                formatted_humid = self.nice_round(self.current_humid)
                 humid_text = self.humid_font.render(f"{formatted_humid}%", True, self.TEXT2_COLOUR)
             else:
                 humid_text = self.get_cached_text("N/A", self.humid_font, self.TEXT2_COLOUR)
@@ -357,6 +359,8 @@ class PiTracker:
 
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
+        self.logger.info("Generating new graph...")
+        self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
         try:
             timestamps, temperatures, humidities = [], [], []
             cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
@@ -510,66 +514,55 @@ class PiTracker:
         except Exception as e:
             self.logger.error("Error during cleanup: %s", e)
 
+    def read_display_current_temp(self):
+        try:
+            '''
+            # SHT41
+            sensor_data = self.read_sensor_sht41()
+            if sensor_data:
+                current_temp, current_humid, current_touch = sensor_data
+            '''
+            sensor_data = self.read_sensor_dht22()
+            if sensor_data:
+                self.current_temp, self.current_humid = sensor_data
+
+        except SensorReadError as e:
+            self.logger.warning("Failed to read sensor: %s", e)
+
+        self.display_temperature(
+            self.current_temp if self.current_temp is not None else 'N/A',
+            self.current_humid if self.current_humid is not None else 'N/A'
+        )
+
+        if self.current_temp:
+            if self.current_temp > self.max_temp_past24:
+                self.max_temp_past24 = self.current_temp
+                self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
+            if self.current_temp < self.min_temp_past24:
+                self.min_temp_past24 = self.current_temp
+                self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
+
     def run(self) -> None:
-        last_graph_time = 0
-        last_csv_time = 0
-        last_sun_times_update = 0
 
         try:
+            # Read sensor every 5 seconds   
+            schedule.every(5).seconds.do(self.read_display_current_temp)
+
+            # Generate graph every 5 minutes
+            schedule.every(5).minutes.do(self.generate_graph)
+
+            # Write CSV every hour
+            schedule.every().hour.do(self.write_csv_from_buffer)
+
+            # Recalculate sun times daily
+            schedule.every().day.at("01:00").do(self.calc_sun_times) 
+
             while True:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         raise KeyboardInterrupt
 
-                now_timestamp = int(time.time())
-                current_temp, current_humid, current_touch = None, None, None
-
-                # recalculate sun times daily
-                if now_timestamp - last_sun_times_update >= self.SUN_TIMES_UPDATE_INTERVAL:
-                    self.logger.info("Updating sun times...")
-                    last_sun_times_update = now_timestamp
-                    self.calc_sun_times()
-
-                if datetime.now().second % 5 == 0:
-                    try:
-                        '''
-                        # SHT41
-                        sensor_data = self.read_sensor_sht41()
-                        if sensor_data:
-                            current_temp, current_humid, current_touch = sensor_data
-                        '''
-                        sensor_data = self.read_sensor_dht22()
-                        if sensor_data:
-                            current_temp, current_humid = sensor_data
-
-                    except SensorReadError as e:
-                        self.logger.warning("Failed to read sensor: %s", e)
-
-                    self.display_temperature(
-                        current_temp if current_temp is not None else 'N/A',
-                        current_humid if current_humid is not None else 'N/A'
-                    )
-
-                    if current_temp:
-                        if current_temp > self.max_temp_past24:
-                            self.max_temp_past24 = current_temp
-                            self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
-                        if current_temp < self.min_temp_past24:
-                            self.min_temp_past24 = current_temp
-                            self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
-
-                if now_timestamp - last_graph_time >= self.GRAPH_UPDATE_INTERVAL:
-                    if current_temp is not None:
-                        self.logger.info("Generating new graph...")
-                        self.temp_buffer.append([datetime.now().isoformat(), current_temp, current_humid])
-                        self.generate_graph()
-                        last_graph_time = time.time()
-
-                if now_timestamp - last_csv_time >= self.CSV_WRITE_INTERVAL:
-                    self.logger.info("Writing to CSV...")
-                    self.write_csv_from_buffer()
-                    last_csv_time = time.time()
-
+                schedule.run_pending()
                 time.sleep(1)
 
         except KeyboardInterrupt:
