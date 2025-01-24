@@ -87,8 +87,8 @@ class PiTracker:
         # Cache for rendered text
         self._text_cache: Dict[str, pygame.Surface] = {}
 
-        self.current_temp = 0.0
-        self.current_humid = 0.0
+        self.current_temp = None
+        self.current_humid = None
 
         pygame.mouse.set_visible(False)
         self.logger.info("PiTracker initialized")
@@ -279,7 +279,7 @@ class PiTracker:
             self._text_cache[cache_key] = font.render(text, True, color)
         return self._text_cache[cache_key]
 
-    def display_temperature(self, current_temp: Union[float, str], current_humid: Union[float, str]) -> None:
+    def display_temperature(self) -> None:
         """Updates the Pygame display with the current temperature and graph."""
         try:
             left_margin = 50
@@ -533,10 +533,7 @@ class PiTracker:
         except SensorReadError as e:
             self.logger.warning("Failed to read sensor: %s", e)
 
-        self.display_temperature(
-            self.current_temp if self.current_temp is not None else 'N/A',
-            self.current_humid if self.current_humid is not None else 'N/A'
-        )
+        self.display_temperature()
 
         if self.current_temp:
             if self.current_temp > self.max_temp_past24:
