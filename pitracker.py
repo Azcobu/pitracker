@@ -91,6 +91,8 @@ class PiTracker:
         self.current_humid = 0.0
 
         pygame.mouse.set_visible(False)
+        self.calc_sun_times()
+        self.generate_graph()
         self.logger.info("PiTracker initialized")
 
     def read_location(self):
