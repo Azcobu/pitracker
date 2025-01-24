@@ -94,8 +94,8 @@ class PiTracker:
         self.logger.info("PiTracker initialized")
 
         self.calc_sun_times()
-        self.generate_graph()
         self.read_display_current_temp()
+        self.generate_graph()
 
     def read_location(self):
         try:
@@ -364,7 +364,8 @@ class PiTracker:
     def generate_graph(self) -> None:
         """Generates a graph from the last 24 hours of temperature data."""
         self.logger.info("Generating new graph...")
-        self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
+        if self.current_temp is not None and self.current_humid is not None:
+            self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
         try:
             timestamps, temperatures, humidities = [], [], []
             cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
