@@ -550,31 +550,36 @@ class PiTracker:
     def save_daily_stats(self):
         temps = []
 
-        with open(self.LAST_24_HOURS_DATA, 'r', encoding ='utf-8') as file:
-            lines = file.readlines()
+        try:
+            self.logger.info("Saving daily stats for the day.")
 
-        # Get the middle line's date
-        middle_index = len(lines) // 2
-        middle_line = lines[middle_index].strip()
-        middle_timestamp = middle_line.split(',')[0]
-        date_of_interest = datetime.fromisoformat(middle_timestamp).date()
+            with open(self.LAST_24_HOURS_DATA, 'r', encoding ='utf-8') as file:
+                lines = file.readlines()
 
-        # Filter and collect temperatures for the middle date
-        for line in lines:
-            timestamp, temperature, _ = line.strip().split(',')
-            record_date = datetime.fromisoformat(timestamp).date()
+            # Get the middle line's date
+            middle_index = len(lines) // 2
+            middle_line = lines[middle_index].strip()
+            middle_timestamp = middle_line.split(',')[0]
+            date_of_interest = datetime.fromisoformat(middle_timestamp).date()
 
-            if record_date == date_of_interest:
-                temps.append(float(temperature))
+            # Filter and collect temperatures for the middle date
+            for line in lines:
+                timestamp, temperature, _ = line.strip().split(',')
+                record_date = datetime.fromisoformat(timestamp).date()
 
-        max_temp = self.nice_round(max(temps))
-        avg_temp = self.nice_round(sum(temps) / len(temps))
+                if record_date == date_of_interest:
+                    temps.append(float(temperature))
 
-        daily_data = [date_of_interest, max_temp, avg_temp]
+            max_temp = self.nice_round(max(temps))
+            avg_temp = self.nice_round(sum(temps) / len(temps))
 
-        with open(self.HISTORICAL_DATA, "w", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)
-            writer.writerow(daily_data)
+            daily_data = [date_of_interest, max_temp, avg_temp]
+
+            with open(self.HISTORICAL_DATA, "w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(daily_data)
+        except Exception as err:
+            self.logger.error("Error saving daily stats: %s", err)
 
     def run(self) -> None:
 
@@ -592,7 +597,7 @@ class PiTracker:
             schedule.every().day.at("01:00").do(self.calc_sun_times)
 
             # Save stats for the day at midnight
-            schedule.every().day.at("20:10").do(self.save_daily_stats)
+            schedule.every().day.at("00:00").do(self.save_daily_stats)
 
             while True:
                 for event in pygame.event.get():
