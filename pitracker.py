@@ -5,7 +5,9 @@
 # at midnight get stats for the day - high, avg, for longterm use?
 # make graph properly 24 hrs, not 24 hrs + up to another hr in temp buffer - done
 # get display timeout working with touch sensor
-# proper sunrise/sunset times updated at midnight, not just estimates
+# proper sunrise/sunset times updated at midnight, not just estimates - done
+# bluetooth integration
+# timed screen shutdown?
 
 import time
 import subprocess
@@ -40,7 +42,8 @@ class DataValidationError(Exception):
 class PiTracker:
     SERIAL_PORT = '/dev/ttyACM0'
     BAUD_RATE = 9600
-    CSV_FILE = "temperature_log.csv"
+    LAST_24_HOURS_DATA = "temperature_log.csv"
+    HISTORICAL_DATA = "historical_data.csv"
     LOCATION_CONFIG = 'location_config.json'
     DISPLAY_WIDTH = 800
     DISPLAY_HEIGHT = 480
@@ -214,7 +217,7 @@ class PiTracker:
             return
 
         try:
-            with open(self.CSV_FILE, "a", newline="", encoding="utf-8") as file:
+            with open(self.LAST_24_HOURS_DATA, "a", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerows(self.temp_buffer)
 
@@ -232,12 +235,12 @@ class PiTracker:
 
         try:
             # Read existing data
-            with open(self.CSV_FILE, "r", encoding="utf-8") as file:
+            with open(self.LAST_24_HOURS_DATA, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 rows = [row for row in reader if datetime.fromisoformat(row[0]) > cutoff]
 
             # Write filtered data back
-            with open(self.CSV_FILE, "w", newline="", encoding="utf-8") as file:
+            with open(self.LAST_24_HOURS_DATA, "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerows(rows)
 
@@ -370,8 +373,8 @@ class PiTracker:
             timestamps, temperatures, humidities = [], [], []
             cutoff = datetime.now() - timedelta(hours=self.HOURS_TO_KEEP)
 
-            if os.path.exists(self.CSV_FILE):
-                with open(self.CSV_FILE, "r", encoding="utf-8") as file:
+            if os.path.exists(self.LAST_24_HOURS_DATA):
+                with open(self.LAST_24_HOURS_DATA, "r", encoding="utf-8") as file:
                     reader = csv.reader(file)
                     for row in reader:
                         if datetime.fromisoformat(row[0]) > cutoff:
@@ -544,6 +547,35 @@ class PiTracker:
                 self.min_temp_past24 = self.current_temp
                 self.temp_buffer.append([datetime.now().isoformat(), self.current_temp, self.current_humid])
 
+    def save_daily_stats(self):
+        temps = []
+
+        with open(self.LAST_24_HOURS_DATA, 'r', encoding ='utf-8') as file:
+            lines = file.readlines()
+
+        # Get the middle line's date
+        middle_index = len(lines) // 2
+        middle_line = lines[middle_index].strip()
+        middle_timestamp = middle_line.split(',')[0]
+        date_of_interest = datetime.fromisoformat(middle_timestamp).date()
+
+        # Filter and collect temperatures for the middle date
+        for line in lines:
+            timestamp, temperature, _ = line.strip().split(',')
+            record_date = datetime.fromisoformat(timestamp).date()
+
+            if record_date == date_of_interest:
+                temps.append(float(temperature))
+
+        max_temp = self.nice_round(max(temps))
+        avg_temp = self.nice_round(sum(temps) / len(temps))
+
+        daily_data = [date_of_interest, max_temp, avg_temp]
+
+        with open(self.HISTORICAL_DATA, "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            writer.writerow(daily_data)
+
     def run(self) -> None:
 
         try:
@@ -557,7 +589,10 @@ class PiTracker:
             schedule.every().hour.do(self.write_csv_from_buffer)
 
             # Recalculate sun times daily
-            schedule.every().day.at("01:00").do(self.calc_sun_times) 
+            schedule.every().day.at("01:00").do(self.calc_sun_times)
+
+            # Save stats for the day at midnight
+            schedule.every().day.at("20:10").do(self.save_daily_stats)
 
             while True:
                 for event in pygame.event.get():
