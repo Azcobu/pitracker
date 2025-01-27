@@ -572,14 +572,17 @@ class PiTracker:
 
             max_temp = self.nice_round(max(temps))
             avg_temp = self.nice_round(sum(temps) / len(temps))
+            min_temp = self.nice_round(min(temps))
 
-            daily_data = [date_of_interest, max_temp, avg_temp]
+            daily_data = [date_of_interest, max_temp, avg_temp, min_temp]
 
             with open(self.HISTORICAL_DATA, "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerow(daily_data)
         except Exception as err:
             self.logger.error("Error saving daily stats: %s", err)
+            with open('historical_error.txt', 'w', encoding='utf-8') as outfile:
+                outfile.write(f"Error saving daily stats: {err}")
 
     def run(self) -> None:
 
