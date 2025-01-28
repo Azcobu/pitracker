@@ -576,7 +576,7 @@ class PiTracker:
 
             daily_data = [date_of_interest, max_temp, avg_temp, min_temp]
 
-            with open(self.HISTORICAL_DATA, "w", newline="", encoding="utf-8") as file:
+            with open(self.HISTORICAL_DATA, "a", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerow(daily_data)
         except Exception as err:
